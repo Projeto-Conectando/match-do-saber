@@ -1,4 +1,5 @@
-:global(html, body, #root) { margin: 0; height: 100%; }
+/* Três seletores: `:global(html, body, #root)` vira o descendente `html body #root` e não alcança html nem body (AC-4.5). */
+:global(html), :global(body), :global(#root) { margin: 0; height: 100%; }
 :global(body) { background: #1b1035; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; }
 .app { height: 100%; position: relative; }
 .centro { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1rem; padding: 2rem; box-sizing: border-box; }
@@ -35,11 +36,18 @@
 .faixa { position: absolute; top: 0; left: 0; right: 0; margin: 0; background: #ffd166; color: #1b1035; text-align: center; padding: 0.5rem; font-weight: 700; }
 .preview { position: absolute; right: 1rem; bottom: 1rem; width: 320px; height: 180px; border-radius: 0.75rem; overflow: hidden; border: 3px solid #fff; }
 .preview video, .preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-.botaoModo { margin-top: 1.5rem; font-size: 1.1rem; padding: 0.6rem 1.25rem; border-radius: 2rem; border: 2px solid #fff; background: transparent; color: #fff; cursor: pointer; }
+.botaoModo { margin-top: 0; font-size: 1.1rem; padding: 0.6rem 1.25rem; border-radius: 2rem; border: 2px solid #fff; background: transparent; color: #fff; cursor: pointer; }
 .menu { background: #2a1850; padding: 2rem; border-radius: 1.5rem; font-size: 1.1rem; font-weight: 400; max-width: 40rem; text-align: left; }
 .menu h2 { margin-top: 0; font-size: 1.75rem; }
 .menu ul { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.75rem; }
 .menu button { font-size: 1.25rem; padding: 0.5rem 1rem; border-radius: 0.75rem; border: 2px solid transparent; background: #3a2470; color: #fff; cursor: pointer; }
-.menu .destacado { border-color: #7cff6b; }
+.menu li { padding: 0.5rem 0.75rem; border: 2px solid transparent; border-radius: 0.75rem; }
+.menu li.destacado { border-color: #7cff6b; }
+.rotuloItem { margin: 0 0 0.4rem; font-weight: 700; }
+.opcoes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.botoes { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.botaoIniciar { font-size: 1.5rem; padding: 0.75rem 2rem; border-radius: 2rem; border: none; background: #7cff6b; color: #1b1035; font-weight: 800; cursor: pointer; }
+.botaoIniciar:disabled { opacity: 0.4; cursor: not-allowed; }
+.sair { position: absolute; top: 1rem; left: 1rem; z-index: 2; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: 2rem; border: 2px solid #fff; background: rgb(27 16 53 / 0.7); color: #fff; cursor: pointer; }
 /* Na coluna da esquerda, acima do placar: não cobre o card (FR-4). */
 .dicaModo { position: absolute; left: 1.5rem; bottom: 4.5rem; max-width: calc((100vw - min(34rem, 42vw)) / 2 - 3rem); box-sizing: border-box; margin: 0; background: #3a2470; padding: 0.5rem 1rem; border-radius: 1rem; font-size: 1.1rem; text-align: left; }

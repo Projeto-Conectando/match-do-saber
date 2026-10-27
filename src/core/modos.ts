@@ -87,17 +87,3 @@ export function rotuloValor(item: ItemConfig, valor: Configuracoes[ItemConfig]):
 export function resumoConfiguracoes(c: Configuracoes): string {
   return `Modo: ${MODO_ROTULO[c.modo]} · Tempo por card: ${c.tempoCardS} s · Som: ${c.som ? 'ligado' : 'desligado'}`;
 }
-
-/** @deprecated v2.0.0: mantido só até a Fase 10.4 remover `useModoJogo`. */
-export function lerModo(a: Armazenamento | null): ModoJogo {
-  return lerConfiguracoes(a).modo;
-}
-
-/** @deprecated v2.0.0: mantido só até a Fase 10.4 remover `useModoJogo`. */
-export function salvarModo(a: Armazenamento | null, modo: ModoJogo): void {
-  try {
-    a?.setItem(CHAVES.modo, modo);
-  } catch {
-    // Armazenamento bloqueado.
-  }
-}

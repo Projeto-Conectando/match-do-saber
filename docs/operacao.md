@@ -22,3 +22,6 @@
 2. Para instalar: ícone de instalar na barra de endereço › Instalar.
 3. Permitir a câmera quando o navegador pedir.
 4. Teclas: → verdade, ← falsa, ↑ saiba mais, Enter iniciar / próxima partida.
+5. Clique uma vez na tela do jogo depois de abri-lo: o navegador só libera o som depois de uma interação.
+6. Configurações (tecla M ou botão "⚙ Configurações", só na tela de espera): modo de jogo (Corpo, Mão, Cabeça), tempo por card (10–30 s) e som. Ficam guardadas no notebook.
+7. "▶ Iniciar" começa uma partida pelas setas; "✕ Sair" (ou Esc) encerra a partida na hora.
