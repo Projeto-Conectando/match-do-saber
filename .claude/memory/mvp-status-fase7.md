@@ -1,6 +1,6 @@
 ---
 name: mvp-status-fase7
-description: MVP 001-jogo-estande (spec v3.0.0: modos, Configurações, Iniciar/Sair, sons, início só manual) está na main; verificação manual das Fases 7, 9, 11 e 13 e setup do GitHub/Google pendentes; prazo 2026-11-09
+description: MVP 001-jogo-estande (spec v4.0.0: modos, Configurações, Iniciar/Sair, sons, início só manual, card parado e barra de tempo) está na main; verificação manual das Fases 7, 9, 11, 13 e 15 e setup do GitHub/Google pendentes; prazo 2026-11-09
 metadata:
   type: project
 ---
@@ -14,6 +14,7 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v1.1.0, mergeado em 2026-10-27) Fase 9: testar os modos Mão e Cabeça sentado no notebook real, de preferência com uma pessoa com baixa mobilidade; ajustar `margemMaoOmbro`, `limiarCabecaGraus`, `retornoCabecaGraus` e `limiarQueixo` em `CONFIG_GESTOS`; conferir que o menu aberto bloqueia a calibração.
 - (v2.0.0, mergeado em 2026-10-27) Fase 11: ouvir os sons no barulho do evento (ajustar `volume` em `src/app/audio.ts`), layout na TV, tempos de 10 s e 30 s com o público, "✕ Sair" sobre a faixa "Câmera indisponível" e recalibração logo após Sair com o jogador ainda no quadro.
 - (v3.0.0, mergeado em 2026-10-27) Fase 13: com a câmera real, confirmar que nada começa sozinho na espera, Iniciar → calibração → partida, Sair/ausência deixam na espera, Enter duas vezes com pouca luz; e Iniciar enquanto a câmera ainda carrega (começa direto).
+- (v4.0.0, mergeado em 2026-10-27) Fase 15: com a câmera real, confirmar que o card não treme/inclina antes da escolha; barra e pulso vermelho legíveis a ~2 m na TV; centralização na resolução da TV; checar com a equipe de conteúdo o corte 16:9 das imagens (antes 4:3).
 - O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
 
 **Why:** o código só foi verificado sem câmera e sem contas reais; nada foi publicado.
