@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 2.0.0
+**Version:** 3.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -16,6 +16,7 @@
 | 1.0.0 | 2026-10-26 | Spec inicial aprovada |
 | 1.1.0 | 2026-10-27 | Adicionados Story 9 e FR-9: menu "Modo de jogo" com modos acessíveis Mão e Cabeça (Corpo continua padrão); FR-2 passa a ser o modo Corpo |
 | 2.0.0 | 2026-10-27 | Reescritos Story 9 e FR-9: o menu "Modo de jogo" vira "Configurações" (modo, tempo por card de 10 a 30 s, som); o tempo por card deixa de ser fixo em 15 s (FR-1, AC-1.2, AC-4.4). Adicionados Story 10/FR-10 (botões Iniciar e Sair), Story 11/FR-11 (sons) e AC-4.5 (card centralizado na vertical) |
+| 3.0.0 | 2026-10-27 | Início só manual: a câmera deixa de iniciar a partida sozinha (reescritos AC-1.1, AC-1.6, AC-10.1, FR-1 e a linha "Iluminação ruim" dos erros; ajustados AC-1.4 e AC-10.3; acrescentados AC-1.7 e AC-1.8). Causa: depois de uma partida, de Sair ou de a pessoa sair do quadro, o jogo recomeçava sozinho se alguém continuasse no quadro |
 
 ---
 
@@ -61,12 +62,14 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 **Acceptance criteria:**
 
-- [ ] **AC-1.1** Given o jogo está na tela de espera e ninguém está diante da câmera When uma pessoa entra no quadro Then a tela muda para a calibração com a instrução "Fique no centro".
+- [ ] **AC-1.1** Given o jogo está na tela de espera When uma pessoa entra no quadro, fica nele ou sai e volta Then nada acontece: o jogo continua na tela de espera, sem calibração e sem partida. A câmera nunca inicia nada sozinha.
 - [ ] **AC-1.2** Given a tela de calibração When a pessoa permanece na área central por 2 s contínuos Then a partida começa e o primeiro card aparece com o cronômetro no tempo por card configurado (padrão 15 s, FR-9).
 - [ ] **AC-1.3** Given a tela de calibração When a pessoa sai da área central antes de 2 s Then a contagem de calibração reinicia do zero.
-- [ ] **AC-1.4** Given a tela de calibração When ninguém é detectado por 10 s Then o jogo volta à tela de espera.
+- [ ] **AC-1.4** Given a tela de calibração When ninguém é detectado por 10 s Then o jogo volta à tela de espera e permanece nela, mesmo que alguém entre no quadro depois (AC-1.1).
 - [ ] **AC-1.5** Given há duas ou mais pessoas no quadro When a calibração ou a partida acontece Then apenas a pessoa mais central e maior no quadro controla o jogo, e os movimentos das demais não geram escolhas.
-- [ ] **AC-1.6** Given a tela de espera When o operador pressiona Enter Then a partida começa sem calibração e é controlada por teclado e mouse/toque.
+- [ ] **AC-1.6** Given a tela de espera, há notícias publicadas e a câmera está indisponível ou não foi autorizada When o operador pressiona Enter (ou clica em "▶ Iniciar") Then a partida começa na hora, sem calibração, controlada por teclado e mouse/toque.
+- [ ] **AC-1.7** Given a tela de espera, há notícias publicadas e a câmera está ativa When o operador pressiona Enter (ou clica em "▶ Iniciar") Then abre a calibração com a instrução "Fique no centro" (AC-1.2), e a partida só começa depois de 2 s contínuos na área central.
+- [ ] **AC-1.8** Given a tela de calibração When o operador pressiona Enter Then a calibração é pulada e a partida começa na hora, controlada por teclado e mouse/toque (AC-1.6).
 
 ### Story 2: Escolher match ou descarte com o corpo
 
@@ -124,7 +127,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-5.6** Given a tela de resumo está aberta When o operador pressiona Enter (iniciar nova partida) Then o resumo fecha, nada da partida anterior é guardado e o jogo vai para a calibração da nova partida (ou inicia direto pela entrada alternativa, se a câmera estiver indisponível).
 - [ ] **AC-5.3** Given uma partida está em andamento When ninguém é detectado na câmera Then o cronômetro pausa e aparece a mensagem "Volte para o centro".
 - [ ] **AC-5.4** Given a mensagem "Volte para o centro" está na tela When a pessoa volta ao quadro antes de 10 s Then a partida continua do mesmo card, com o cronômetro retomando de onde parou.
-- [ ] **AC-5.5** Given a mensagem "Volte para o centro" está na tela When se passam 10 s sem ninguém no quadro Then a partida é encerrada sem resumo e o jogo volta à tela de espera.
+- [ ] **AC-5.5** Given a mensagem "Volte para o centro" está na tela When se passam 10 s sem ninguém no quadro Then a partida é encerrada sem resumo e o jogo volta à tela de espera e permanece nela, mesmo que a pessoa volte ao quadro depois (AC-1.1).
 
 ### Story 6: Montar uma partida equilibrada
 
@@ -199,9 +202,9 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 **Acceptance criteria:**
 
-- [ ] **AC-10.1** Given o jogo está na tela de espera e há notícias publicadas When o operador clica em "▶ Iniciar" Then acontece o mesmo que com Enter (AC-1.6): a partida começa sem calibração.
+- [ ] **AC-10.1** Given o jogo está na tela de espera e há notícias publicadas When o operador clica em "▶ Iniciar" Then acontece o mesmo que com Enter na espera (AC-1.6 sem câmera, AC-1.7 com câmera ativa).
 - [ ] **AC-10.2** Given não há notícias publicadas When a tela de espera aparece Then o botão "▶ Iniciar" está desativado.
-- [ ] **AC-10.3** Given o jogo está na calibração, num card (com ou sem "saiba mais"), no feedback ou no resumo When o operador clica em "✕ Sair" ou pressiona Esc Then a partida termina na hora, sem resumo, nada dela é guardado e o jogo volta à tela de espera.
+- [ ] **AC-10.3** Given o jogo está na calibração, num card (com ou sem "saiba mais"), no feedback ou no resumo When o operador clica em "✕ Sair" ou pressiona Esc Then a partida termina na hora, sem resumo, nada dela é guardado e o jogo volta à tela de espera e permanece nela, mesmo que o jogador continue no quadro (AC-1.1).
 - [ ] **AC-10.4** Given a tela de espera, sem menu aberto When o operador pressiona Esc Then nada acontece.
 - [ ] **AC-10.5** Given uma partida em andamento When o botão "✕ Sair" aparece Then ele fica num canto da tela, não cobre o card nem o texto da notícia (FR-4) e tem o nome acessível "Sair da partida".
 
@@ -226,13 +229,14 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 O jogo passa por estes estados: espera → calibração → card → (saiba mais) → feedback → … → resumo → espera, além do estado "Volte para o centro" durante a partida.
 
 **Must:**
-- Começar a partida só depois de 2 s contínuos de calibração, ou por Enter do operador.
+- Começar a partida só por ação do operador: Enter ou "▶ Iniciar" na espera (AC-1.6, AC-1.7), ou Enter na calibração (AC-1.8). Com a câmera ativa, a partida só começa depois de 2 s contínuos de calibração, a menos que o operador pule a calibração.
 - Ter o tempo por card configurado (padrão 15 s, FR-9), 3 s de feedback, 5 s de inatividade para fechar o "saiba mais" e 10 s de tolerância sem pessoa no quadro.
 - Encerrar a partida a qualquer momento pelo botão "✕ Sair" ou por Esc (FR-10).
 - Manter o resumo na tela até o operador iniciar uma nova partida (Enter).
 - Pausar o cronômetro do card durante o "saiba mais" e durante "Volte para o centro".
 
 **Must not:**
+- Iniciar a calibração ou a partida por causa da câmera: a presença de uma pessoa no quadro nunca tira o jogo da tela de espera.
 - Guardar qualquer informação da partida depois de uma nova partida começar ou de o jogo voltar à tela de espera.
 - Aceitar uma escolha durante o feedback, o resumo ou a calibração.
 
@@ -331,7 +335,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ### FR-10: Iniciar e sair (adicionado v2.0.0)
 
 **Must:**
-- Mostrar na tela de espera o botão "▶ Iniciar", com o mesmo efeito de Enter (AC-1.6), desativado quando não há notícias.
+- Mostrar na tela de espera o botão "▶ Iniciar", com o mesmo efeito de Enter na espera (AC-1.6, AC-1.7), desativado quando não há notícias.
 - Mostrar durante a calibração, o card, o feedback e o resumo o botão "✕ Sair" (nome acessível "Sair da partida"), num canto da tela, sem cobrir o card.
 - Encerrar a partida na hora com "✕ Sair" ou Esc, sem resumo, e voltar à tela de espera.
 
@@ -381,7 +385,8 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 | Nenhuma webcam no notebook | Mesmo comportamento da permissão negada. |
 | Câmera desconectada no meio da partida | Aviso "Câmera indisponível — use as setas"; a partida continua e o cronômetro não pausa. |
 | Jogador sai do quadro durante a partida | Pausa com "Volte para o centro"; retoma se ele voltar em até 10 s; senão encerra sem resumo e volta à espera (AC-5.3 a AC-5.5). |
-| Iluminação ruim impede a detecção | A calibração não conclui e a mensagem "Fique no centro" continua; o operador pode começar com Enter e jogar pelas setas. |
+| Iluminação ruim impede a detecção | A calibração não conclui e a mensagem "Fique no centro" continua; o operador pressiona Enter para pular a calibração e joga pelas setas (AC-1.8). |
+| Jogador sai do quadro, partida termina ou operador usa Sair, e alguém continua no quadro | O jogo fica na tela de espera até o operador iniciar de novo (AC-1.1, AC-10.3). |
 | Várias pessoas no quadro | Só a pessoa mais central e maior controla (AC-1.5). |
 | Nenhuma notícia publicada | Tela de espera com "Nenhuma notícia publicada"; não inicia partida (AC-6.4). |
 | Linha da planilha incompleta, em rascunho, com `id` duplicado ou com imagem inacessível | A linha não é publicada e aparece no resumo com o motivo (AC-7.3, FR-7). |
@@ -398,6 +403,12 @@ Nenhuma pendente. Decisões que o PRD não fixava, confirmadas pela responsável
 - O "saiba mais" fecha sozinho após 5 s sem gesto nem tecla (AC-3.5).
 - O resumo fica na tela até o operador iniciar uma nova partida com Enter (AC-5.2, AC-5.6).
 - A partida pode começar por Enter, sem câmera (AC-1.6).
+
+Decisões da v3.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
+- A câmera nunca inicia a partida: só "▶ Iniciar" ou Enter (AC-1.1).
+- Com câmera ativa, Iniciar/Enter leva à calibração de 2 s e depois à partida (AC-1.7); sem câmera, começa direto (AC-1.6).
+- Enter na calibração pula a calibração e joga pelas setas (AC-1.8): mantém o caminho para iluminação ruim.
+- Depois de Sair, do fim por ausência de 10 s ou da calibração sem ninguém, o jogo fica na espera.
 - A tela de referência é 1366×768 (FR-4).
 - Linhas com `id` duplicado são descartadas (FR-7).
 - A meta de 8 h de operação contínua (Reliability).
