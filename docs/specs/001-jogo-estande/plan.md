@@ -3907,6 +3907,7 @@ Itens invalidados pela v3.0.0:
 - [ ] Sair da frente da câmera por 10 s durante a partida e voltar depois: o jogo fica na espera e não recomeça (AC-5.5).
 - [ ] Apertar "✕ Sair" com o jogador ainda no quadro: o jogo fica na espera.
 - [ ] Com iluminação ruim (ou a câmera tapada), apertar Enter duas vezes: a calibração é pulada e a partida roda pelas setas (AC-1.8).
+- [ ] Apertar "▶ Iniciar" nos primeiros segundos, enquanto a câmera ainda carrega: a partida começa direto, como sem câmera (AC-1.6). Conferir se isso é aceitável no estande.
 
 ---
 
@@ -3917,7 +3918,7 @@ npm install
 npm run fixture          # 12 notícias de teste em public/content
 npm run dev              # abre http://localhost:5173, permitir câmera
 ```
-1. Fique no centro por 2 s. A partida começa.
+1. Aperte ▶ Iniciar (ou Enter) e fique no centro por 2 s. A partida começa. (v3.0.0: a câmera sozinha não inicia nada.)
 2. Desloque o tronco para a sua direita: o card sai pela direita e aparece "Acertou!" ou "Errou", com a explicação e a técnica.
 3. Levante as duas mãos: o "saiba mais" abre; espere 5 s e ele fecha.
 4. Termine os 10 cards. O resumo "N de 10" fica na tela; Enter inicia a calibração de uma nova partida.

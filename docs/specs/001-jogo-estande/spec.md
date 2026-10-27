@@ -403,12 +403,6 @@ Nenhuma pendente. Decisões que o PRD não fixava, confirmadas pela responsável
 - O "saiba mais" fecha sozinho após 5 s sem gesto nem tecla (AC-3.5).
 - O resumo fica na tela até o operador iniciar uma nova partida com Enter (AC-5.2, AC-5.6).
 - A partida pode começar por Enter, sem câmera (AC-1.6).
-
-Decisões da v3.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
-- A câmera nunca inicia a partida: só "▶ Iniciar" ou Enter (AC-1.1).
-- Com câmera ativa, Iniciar/Enter leva à calibração de 2 s e depois à partida (AC-1.7); sem câmera, começa direto (AC-1.6).
-- Enter na calibração pula a calibração e joga pelas setas (AC-1.8): mantém o caminho para iluminação ruim.
-- Depois de Sair, do fim por ausência de 10 s ou da calibração sem ninguém, o jogo fica na espera.
 - A tela de referência é 1366×768 (FR-4).
 - Linhas com `id` duplicado são descartadas (FR-7).
 - A meta de 8 h de operação contínua (Reliability).
@@ -425,6 +419,12 @@ Decisões da v2.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
 - "▶ Iniciar" faz o mesmo que Enter; "✕ Sair" (ou Esc) encerra a partida na hora, sem confirmação e sem resumo.
 - Sons: deslizar na escolha; positivo no acerto; erro no erro e no tempo esgotado.
 - O card fica centralizado na vertical.
+
+Decisões da v3.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
+- A câmera nunca inicia a partida: só "▶ Iniciar" ou Enter (AC-1.1).
+- Com câmera ativa, Iniciar/Enter leva à calibração de 2 s e depois à partida (AC-1.7); sem câmera, começa direto (AC-1.6).
+- Enter na calibração pula a calibração e joga pelas setas (AC-1.8): mantém o caminho para iluminação ruim.
+- Depois de Sair, do fim por ausência de 10 s ou da calibração sem ninguém, o jogo fica na espera.
 
 ## Out of Scope (Future Considerations)
 
