@@ -30,7 +30,7 @@ export function TelaEspera({ semNoticias, camera, config = CONFIG_PADRAO, onAbri
       ) : camera === 'negada' || camera === 'indisponivel' ? (
         <p className={s.aviso}>Câmera desativada — jogue pelas setas (Enter para começar)</p>
       ) : (
-        <p className={s.chamada}>Chegue mais perto e fique de frente para a câmera para jogar</p>
+        <p className={s.chamada}>Aperte ▶ Iniciar (ou Enter) e fique de frente para a câmera</p>
       )}
       <div className={s.botoes}>
         {/* Os botões perdem o foco no clique: um Enter depois não deve reativá-los. */}
