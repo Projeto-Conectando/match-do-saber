@@ -9,7 +9,9 @@ const n = (id: string, veredito: Veredito, tecnica: Tecnica = 'fonte'): Noticia 
   id, veredito, tecnica, titulo: id, descricao: '', saibaMais: '', imagem: '', explicacao: '', fonteUrl: '',
 });
 const noticias = [n('v1', 'verdadeira', 'data'), n('f1', 'falsa', 'fonte'), n('v2', 'verdadeira', 'data')];
-const ctx = (over: Partial<Contexto> = {}): Contexto => ({ noticias, rng: () => 0.5, cameraAtiva: true, ...over });
+const ctx = (over: Partial<Contexto> = {}): Contexto => ({
+  noticias, rng: () => 0.5, cameraAtiva: true, tempoCardMs: TEMPOS.cardMs, ...over,
+});
 
 const centro: Presenca = { presente: true, centralizado: true };
 const lado: Presenca = { presente: true, centralizado: false };
@@ -166,5 +168,34 @@ describe('resumo', () => {
     if (s.tela !== 'card') throw new Error();
     expect(s.partida.resultados).toEqual([]);
     expect(s.partida.entrada).toBe('alternativa');
+  });
+});
+
+describe('v2.0.0: tempo por card e sair', () => {
+  it('AC-9.17/AC-1.2/AC-4.4: o tempo configurado vale para todos os cards', () => {
+    const c = ctx({ tempoCardMs: 20000 });
+    const s0 = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }], c);
+    expect(s0).toMatchObject({ tela: 'card', restanteMs: 20000 });
+    const s1 = rodar(s0, [{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
+    expect(s1).toMatchObject({ tela: 'card', indice: 1, restanteMs: 20000 });
+    expect(rodar(s1, [tick(10000), tick(9999)], c).tela).toBe('card');
+    expect(rodar(s1, [tick(10000), tick(10000)], c).tela).toBe('feedback');
+  });
+  it.each(['calibracao', 'card', 'saibaMais', 'feedback', 'resumo'] as const)('AC-10.3: sair em %s volta à espera', (onde) => {
+    const c = ctx();
+    let s: Estado;
+    if (onde === 'calibracao') s = reduzir(ESTADO_INICIAL, tick(16, lado), c);
+    else if (onde === 'card') s = emCard(c);
+    else if (onde === 'saibaMais') s = reduzir(emCard(c), { tipo: 'saibaMais' }, c);
+    else if (onde === 'feedback') s = reduzir(emCard(c), { tipo: 'escolha', resposta: 'falsa' }, c);
+    else {
+      s = emCard(c);
+      for (let i = 0; i < 3; i++) s = rodar(s, [{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
+    }
+    expect(s.tela).toBe(onde === 'saibaMais' ? 'card' : onde);
+    expect(reduzir(s, { tipo: 'sair' }, c)).toEqual(ESTADO_INICIAL);
+  });
+  it('AC-10.4: sair na espera não muda nada', () => {
+    expect(reduzir(ESTADO_INICIAL, { tipo: 'sair' }, ctx())).toBe(ESTADO_INICIAL);
   });
 });

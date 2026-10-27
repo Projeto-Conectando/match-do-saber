@@ -1,5 +1,8 @@
 import { useRef, type RefObject } from 'react';
-import { DICA_GESTOS, DICA_SAIBA_MAIS, MODO_ROTULO, MODOS, type ModoJogo } from '../core/modos';
+import {
+  CONFIG_PADRAO, DICA_GESTOS, DICA_SAIBA_MAIS, ITENS_CONFIG, OPCOES, ROTULO_ITEM, resumoConfiguracoes, rotuloValor,
+  type Configuracoes, type ModoJogo,
+} from '../core/modos';
 import type { Resultado } from '../core/partida';
 import { TECNICA_ROTULO, type Noticia, type Tecnica } from '../core/types';
 import type { StatusCamera } from './useJogo';
@@ -12,11 +15,12 @@ function Placar({ pontos }: { pontos: number }) {
   return <p className={s.pontos}>{`Pontos: ${pontos}`}</p>;
 }
 
-export function TelaEspera({ semNoticias, camera, modo = 'corpo', onAbrirMenu = () => {} }: {
+export function TelaEspera({ semNoticias, camera, config = CONFIG_PADRAO, onAbrirMenu = () => {}, onIniciar = () => {} }: {
   semNoticias: boolean;
   camera: StatusCamera;
-  modo?: ModoJogo;
+  config?: Configuracoes;
   onAbrirMenu?: () => void;
+  onIniciar?: () => void;
 }) {
   return (
     <main className={s.centro}>
@@ -28,14 +32,16 @@ export function TelaEspera({ semNoticias, camera, modo = 'corpo', onAbrirMenu = 
       ) : (
         <p className={s.chamada}>Chegue mais perto e fique de frente para a câmera para jogar</p>
       )}
-      <button
-        type="button"
-        className={s.botaoModo}
-        // Tira o foco: um Enter depois não deve reativar o botão.
-        onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}
-      >
-        {`⚙ Modo de jogo: ${MODO_ROTULO[modo]}`}
-      </button>
+      <div className={s.botoes}>
+        {/* Os botões perdem o foco no clique: um Enter depois não deve reativá-los. */}
+        <button type="button" className={s.botaoIniciar} disabled={semNoticias} onClick={(e) => { e.currentTarget.blur(); onIniciar(); }}>
+          ▶ Iniciar
+        </button>
+        <button type="button" className={s.botaoModo} onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}>
+          ⚙ Configurações
+        </button>
+      </div>
+      <p className={s.dica}>{resumoConfiguracoes(config)}</p>
     </main>
   );
 }
@@ -50,35 +56,51 @@ export function TelaCalibracao({ progresso, modo = 'corpo' }: { progresso: numbe
   );
 }
 
-export function MenuModo({ ativo, destacado, onEscolher, onFechar }: {
-  ativo: ModoJogo;
-  destacado: number;
-  onEscolher: (modo: ModoJogo) => void;
+export function MenuConfiguracoes({ config, itemDestacado, onDefinir, onFechar }: {
+  config: Configuracoes;
+  itemDestacado: number;
+  onDefinir: (c: Configuracoes) => void;
   onFechar: () => void;
 }) {
   return (
-    <div className={s.sobreposicao} role="dialog" aria-modal="true" aria-label="Modo de jogo">
+    <div className={s.sobreposicao} role="dialog" aria-modal="true" aria-label="Configurações">
       <div className={s.menu}>
-        <h2>Modo de jogo</h2>
+        <h2>Configurações</h2>
         <ul>
-          {MODOS.map((m, i) => (
-            <li key={m}>
-              <button
-                type="button"
-                className={i === destacado ? s.destacado : undefined}
-                aria-pressed={m === ativo}
-                onClick={() => onEscolher(m)}
-              >
-                {`${m === ativo ? '◉' : '○'} ${MODO_ROTULO[m]}${m === 'corpo' ? ' (padrão)' : ''}`}
-              </button>
-              <p className={s.dica}>{DICA_GESTOS[m]}</p>
+          {ITENS_CONFIG.map((item, i) => (
+            <li key={item} className={i === itemDestacado ? s.destacado : undefined}>
+              <p className={s.rotuloItem} id={`cfg-${item}`}>{ROTULO_ITEM[item]}</p>
+              <div className={s.opcoes} role="group" aria-labelledby={`cfg-${item}`}>
+                {(OPCOES[item] as readonly Configuracoes[typeof item][]).map((valor) => {
+                  const ativo = config[item] === valor;
+                  return (
+                    <button
+                      key={String(valor)}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() => onDefinir({ ...config, [item]: valor } as Configuracoes)}
+                    >
+                      {`${ativo ? '◉' : '○'} ${rotuloValor(item, valor)}`}
+                    </button>
+                  );
+                })}
+              </div>
+              {item === 'modo' && <p className={s.dica}>{DICA_GESTOS[config.modo]}</p>}
             </li>
           ))}
         </ul>
-        <p className={s.dica}>↑/↓ e Enter para escolher · Esc para fechar</p>
+        <p className={s.dica}>↑/↓ escolhem o item · ←/→ mudam o valor · Esc ou Enter fecham</p>
         <button type="button" onClick={onFechar}>Fechar</button>
       </div>
     </div>
+  );
+}
+
+export function BotaoSair({ onSair }: { onSair: () => void }) {
+  return (
+    <button type="button" className={s.sair} aria-label="Sair da partida" onClick={(e) => { e.currentTarget.blur(); onSair(); }}>
+      ✕ Sair
+    </button>
   );
 }
 

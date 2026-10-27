@@ -37,20 +37,22 @@ export type Evento =
   | { tipo: 'tick'; dtMs: number; presenca: Presenca | null }
   | { tipo: 'escolha'; resposta: Veredito }
   | { tipo: 'saibaMais' }
-  | { tipo: 'enter' };
+  | { tipo: 'enter' }
+  | { tipo: 'sair' };
 
-export interface Contexto { noticias: Noticia[]; rng: () => number; cameraAtiva: boolean }
+/** `tempoCardMs`: tempo por card configurado (FR-9); sem valor, vale `TEMPOS.cardMs`. */
+export interface Contexto { noticias: Noticia[]; rng: () => number; cameraAtiva: boolean; tempoCardMs?: number }
 
 export const ESTADO_INICIAL: Estado = { tela: 'espera' };
 const CALIBRACAO: Estado = { tela: 'calibracao', centradoMs: 0, ausenteMs: 0 };
 
-function card(partida: Partida, indice: number): EstadoCard {
-  return { tela: 'card', partida, indice, restanteMs: TEMPOS.cardMs, saibaMais: false, saibaMaisOciosoMs: 0, ausenteMs: null };
+function card(partida: Partida, indice: number, tempoCardMs: number = TEMPOS.cardMs): EstadoCard {
+  return { tela: 'card', partida, indice, restanteMs: tempoCardMs, saibaMais: false, saibaMaisOciosoMs: 0, ausenteMs: null };
 }
 
 function iniciarPartida(ctx: Contexto, entrada: Entrada): Estado {
   const cards = sortear(ctx.noticias, ctx.rng);
-  return cards.length === 0 ? ESTADO_INICIAL : card({ cards, resultados: [], entrada }, 0);
+  return cards.length === 0 ? ESTADO_INICIAL : card({ cards, resultados: [], entrada }, 0, ctx.tempoCardMs);
 }
 
 function registrar(e: EstadoCard, r: Resultado, resposta: Veredito | null): Estado {
@@ -65,6 +67,8 @@ function registrar(e: EstadoCard, r: Resultado, resposta: Veredito | null): Esta
 }
 
 export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
+  // "✕ Sair" / Esc (FR-10): encerra na hora, sem resumo; na espera não faz nada.
+  if (evento.tipo === 'sair') return estado.tela === 'espera' ? estado : ESTADO_INICIAL;
   switch (estado.tela) {
     case 'espera': {
       if (ctx.noticias.length === 0) return estado;
@@ -113,7 +117,7 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
       if (restanteMs > 0) return { ...estado, restanteMs };
       const proximo = estado.indice + 1;
       return proximo < estado.partida.cards.length
-        ? card(estado.partida, proximo)
+        ? card(estado.partida, proximo, ctx.tempoCardMs)
         : { tela: 'resumo', partida: estado.partida };
     }
     case 'resumo': {

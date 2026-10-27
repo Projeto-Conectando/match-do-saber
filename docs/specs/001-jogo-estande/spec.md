@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 1.1.0
+**Version:** 2.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -15,6 +15,7 @@
 |---------|------|--------|
 | 1.0.0 | 2026-10-26 | Spec inicial aprovada |
 | 1.1.0 | 2026-10-27 | Adicionados Story 9 e FR-9: menu "Modo de jogo" com modos acessíveis Mão e Cabeça (Corpo continua padrão); FR-2 passa a ser o modo Corpo |
+| 2.0.0 | 2026-10-27 | Reescritos Story 9 e FR-9: o menu "Modo de jogo" vira "Configurações" (modo, tempo por card de 10 a 30 s, som); o tempo por card deixa de ser fixo em 15 s (FR-1, AC-1.2, AC-4.4). Adicionados Story 10/FR-10 (botões Iniciar e Sair), Story 11/FR-11 (sons) e AC-4.5 (card centralizado na vertical) |
 
 ---
 
@@ -31,10 +32,11 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - Uma pessoa não programadora publica ou altera notícias sem ajuda técnica, e só notícias aprovadas, com fonte e revisor, chegam ao jogo.
 - Nenhuma imagem da câmera e nenhum dado de jogador sai do notebook ou fica salvo.
 - Jogadores com baixa mobilidade completam uma partida sem tocar no notebook, usando o modo Mão (levantar uma mão) ou o modo Cabeça (inclinar a cabeça), escolhido pelo operador.
+- O operador ajusta o tempo por card ao público (de 10 a 30 s), liga ou desliga o som, e inicia ou encerra uma partida com um clique.
 
 ## Non-Goals
 
-- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo. (O único valor guardado no notebook é o modo de jogo escolhido pelo operador, que é configuração do estande, não dado de jogador.)
+- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo. (Os únicos valores guardados no notebook são as configurações do estande escolhidas pelo operador: modo de jogo, tempo por card e som. Não são dados de jogador.)
 - Modo para celular individual ou para sala de aula.
 - Multiplayer ou várias pessoas jogando ao mesmo tempo.
 - Painel administrativo próprio: a planilha de conteúdo é o painel.
@@ -60,7 +62,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 **Acceptance criteria:**
 
 - [ ] **AC-1.1** Given o jogo está na tela de espera e ninguém está diante da câmera When uma pessoa entra no quadro Then a tela muda para a calibração com a instrução "Fique no centro".
-- [ ] **AC-1.2** Given a tela de calibração When a pessoa permanece na área central por 2 s contínuos Then a partida começa e o primeiro card aparece com o cronômetro em 15 s.
+- [ ] **AC-1.2** Given a tela de calibração When a pessoa permanece na área central por 2 s contínuos Then a partida começa e o primeiro card aparece com o cronômetro no tempo por card configurado (padrão 15 s, FR-9).
 - [ ] **AC-1.3** Given a tela de calibração When a pessoa sai da área central antes de 2 s Then a contagem de calibração reinicia do zero.
 - [ ] **AC-1.4** Given a tela de calibração When ninguém é detectado por 10 s Then o jogo volta à tela de espera.
 - [ ] **AC-1.5** Given há duas ou mais pessoas no quadro When a calibração ou a partida acontece Then apenas a pessoa mais central e maior no quadro controla o jogo, e os movimentos das demais não geram escolhas.
@@ -106,7 +108,8 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-4.1** Given o jogador escolheu um card When a escolha corresponde ao veredito da notícia Then aparece por 3 s o selo "Acertou!" com o veredito (verdadeira/falsa), a explicação e a técnica de checagem da notícia, e o placar soma +1.
 - [ ] **AC-4.2** Given o jogador escolheu um card When a escolha não corresponde ao veredito Then aparece por 3 s o selo "Errou" com o veredito, a explicação e a técnica, e o placar não muda.
 - [ ] **AC-4.3** Given um card está na tela When o cronômetro chega a 0 sem escolha Then aparece por 3 s o selo "Tempo esgotado" com o veredito, a explicação e a técnica, e o placar não muda.
-- [ ] **AC-4.4** Given o feedback de um card terminou When ainda há cards na partida Then o próximo card aparece com o cronômetro em 15 s.
+- [ ] **AC-4.4** Given o feedback de um card terminou When ainda há cards na partida Then o próximo card aparece com o cronômetro no tempo por card configurado.
+- [ ] **AC-4.5** Given um card está na tela (parado, inclinando ou saindo) When a tela tem 1366×768 ou 1920×1080 Then o card fica centralizado na vertical: o centro do card fica a no máximo 8 px do centro da área de jogo, sem cortar texto (FR-4).
 
 ### Story 5: Ver o resumo e liberar o estande
 
@@ -162,20 +165,20 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-8.2** Given o navegador do notebook oferece instalação When o operador instala o jogo Then ele abre por um ícone, em janela própria e em tela cheia, sem barra de endereço.
 - [ ] **AC-8.3** Given o jogo está aberto sem internet When o operador recarrega a página Then o jogo volta a abrir normalmente, sem tela de erro de conexão.
 
-### Story 9: Escolher um modo de jogo acessível (adicionado v1.1.0)
+### Story 9: Configurar o jogo — modo acessível, tempo e som (reescrito v2.0.0)
 
 **As a** operador do estande
-**I want** escolher entre os modos Corpo, Mão e Cabeça
-**So that** jogadores com baixa mobilidade também consigam jogar sem tocar no notebook
+**I want** um menu de configurações com o modo de jogo (Corpo, Mão, Cabeça), o tempo por card e o som
+**So that** jogadores com baixa mobilidade ou leitura mais lenta também consigam jogar, e o estande se adapte ao ambiente
 
 **Acceptance criteria:**
 
-- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica no botão "⚙ Modo de jogo") Then abre o menu "Modo de jogo" com as opções Corpo, Mão e Cabeça, com a opção ativa marcada.
-- [ ] **AC-9.2** Given o menu "Modo de jogo" está aberto When o operador escolhe uma opção (↑/↓ e Enter, ou clique) Then o menu fecha, a tela de espera mostra "⚙ Modo de jogo: <nome do modo>" e as próximas partidas usam esse modo.
-- [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc ou M Then o menu fecha sem mudar o modo.
-- [ ] **AC-9.4** Given nenhum modo foi escolhido antes neste notebook When o jogo é aberto Then o modo ativo é Corpo.
-- [ ] **AC-9.5** Given o operador escolheu um modo When o jogo é fechado e reaberto, inclusive sem internet Then o mesmo modo continua ativo.
-- [ ] **AC-9.6** Given o jogo não está na tela de espera When o operador pressiona M Then nada acontece: o modo só muda entre partidas.
+- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica em "⚙ Configurações") Then abre o menu "Configurações" com três itens e os valores atuais marcados: "Modo de jogo" (Corpo, Mão, Cabeça), "Tempo por card" (10, 15, 20, 25 ou 30 s) e "Som" (Ligado, Desligado).
+- [ ] **AC-9.2** Given o menu "Configurações" está aberto When o operador muda um valor (↑/↓ escolhem o item, ←/→ mudam o valor; ou clique no valor) Then o valor muda na hora, fica guardado, e a tela de espera passa a mostrar o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
+- [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc, M ou Enter, ou clica em "Fechar" Then o menu fecha mantendo os valores escolhidos, e nenhuma partida começa.
+- [ ] **AC-9.4** Given nada foi configurado antes neste notebook When o jogo é aberto Then as configurações são: modo Corpo, 15 s por card e som ligado.
+- [ ] **AC-9.5** Given o operador mudou as configurações When o jogo é fechado e reaberto, inclusive sem internet Then as mesmas configurações continuam ativas.
+- [ ] **AC-9.6** Given o jogo não está na tela de espera When o operador pressiona M Then nada acontece: as configurações só mudam entre partidas.
 - [ ] **AC-9.7** Given o modo Mão e um card na tela When o jogador mantém a **própria mão direita** acima do ombro por ~300 ms Then o card é registrado como "match" e sai pela direita; com a **mão esquerda**, como "descarte" e sai pela esquerda.
 - [ ] **AC-9.8** Given o modo Mão e um card na tela When o jogador mantém as duas mãos acima dos ombros por ~500 ms Then o "saiba mais" abre (ou fecha, se já estiver aberto) e nenhuma escolha é registrada.
 - [ ] **AC-9.9** Given o modo Mão e o jogador acabou de fazer uma escolha When o próximo card aparece com a mão ainda levantada Then nenhuma nova escolha é aceita até ele baixar as duas mãos.
@@ -186,6 +189,35 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-9.14** Given o modo Mão ou Cabeça When a tela de calibração ou um card aparece Then as instruções mostram os gestos do modo ativo: Mão — "Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais"; Cabeça — "Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais".
 - [ ] **AC-9.15** Given o modo Mão ou Cabeça e um jogador sentado diante da câmera, com ombros e rosto visíveis When ele fica no centro por 2 s Then a calibração conclui e a partida começa.
 - [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
+- [ ] **AC-9.17** Given o tempo por card configurado em N s When um card aparece Then o cronômetro começa em N s e o tempo esgota depois de N s; no menu, ← em 10 s e → em 30 s não mudam o valor.
+
+### Story 10: Iniciar e sair com um clique (adicionado v2.0.0)
+
+**As a** operador do estande
+**I want** botões para iniciar e para encerrar uma partida
+**So that** eu controle a fila sem depender do teclado ou de esperar o fim da partida
+
+**Acceptance criteria:**
+
+- [ ] **AC-10.1** Given o jogo está na tela de espera e há notícias publicadas When o operador clica em "▶ Iniciar" Then acontece o mesmo que com Enter (AC-1.6): a partida começa sem calibração.
+- [ ] **AC-10.2** Given não há notícias publicadas When a tela de espera aparece Then o botão "▶ Iniciar" está desativado.
+- [ ] **AC-10.3** Given o jogo está na calibração, num card (com ou sem "saiba mais"), no feedback ou no resumo When o operador clica em "✕ Sair" ou pressiona Esc Then a partida termina na hora, sem resumo, nada dela é guardado e o jogo volta à tela de espera.
+- [ ] **AC-10.4** Given a tela de espera, sem menu aberto When o operador pressiona Esc Then nada acontece.
+- [ ] **AC-10.5** Given uma partida em andamento When o botão "✕ Sair" aparece Then ele fica num canto da tela, não cobre o card nem o texto da notícia (FR-4) e tem o nome acessível "Sair da partida".
+
+### Story 11: Ouvir a escolha e o resultado (adicionado v2.0.0)
+
+**As a** jogador
+**I want** sons curtos quando escolho e quando vejo o resultado
+**So that** o jogo fique mais divertido e o resultado chame a atenção do público
+
+**Acceptance criteria:**
+
+- [ ] **AC-11.1** Given o som está ligado When uma escolha é registrada (por gesto, tecla ou arraste) Then toca um som curto de "deslizar" enquanto o card sai.
+- [ ] **AC-11.2** Given o som está ligado When o feedback "Acertou!" aparece Then toca um som positivo.
+- [ ] **AC-11.3** Given o som está ligado When o feedback "Errou" ou "Tempo esgotado" aparece Then toca um som de erro, diferente do som positivo.
+- [ ] **AC-11.4** Given o som está desligado nas configurações When qualquer escolha ou feedback acontece Then nenhum som toca.
+- [ ] **AC-11.5** Given o jogo está sem internet When um som deve tocar Then ele toca normalmente: os sons não dependem de rede.
 
 ## Functional Requirements
 
@@ -195,7 +227,8 @@ O jogo passa por estes estados: espera → calibração → card → (saiba mais
 
 **Must:**
 - Começar a partida só depois de 2 s contínuos de calibração, ou por Enter do operador.
-- Ter 15 s por card, 3 s de feedback, 5 s de inatividade para fechar o "saiba mais" e 10 s de tolerância sem pessoa no quadro.
+- Ter o tempo por card configurado (padrão 15 s, FR-9), 3 s de feedback, 5 s de inatividade para fechar o "saiba mais" e 10 s de tolerância sem pessoa no quadro.
+- Encerrar a partida a qualquer momento pelo botão "✕ Sair" ou por Esc (FR-10).
 - Manter o resumo na tela até o operador iniciar uma nova partida (Enter).
 - Pausar o cronômetro do card durante o "saiba mais" e durante "Volte para o centro".
 
@@ -232,6 +265,7 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 - Mostrar no "saiba mais" o texto expandido da notícia.
 - Mostrar no feedback, para todo resultado: selo ("Acertou!", "Errou", "Tempo esgotado"), veredito, explicação e técnica de checagem.
 - Mostrar todos os textos em português do Brasil.
+- Centralizar o card na vertical da área de jogo, parado, inclinando ou saindo (AC-4.5).
 
 **Must not:**
 - Cortar título ou descrição do card: todo o texto cadastrado aparece por inteiro numa tela de 1366×768 ou maior.
@@ -271,22 +305,51 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Funcionar sem internet, com app, notícias, imagens e detecção de movimento, depois de uma abertura online.
 - Atualizar sozinho para a versão publicada mais recente quando aberto com internet.
 
-### FR-9: Modos de jogo acessíveis (adicionado v1.1.0)
+### FR-9: Configurações do estande — modos acessíveis, tempo e som (reescrito v2.0.0)
 
 **Must:**
-- Oferecer, na tela de espera, o menu "Modo de jogo" (tecla M ou botão "⚙ Modo de jogo") com três modos: Corpo (padrão, FR-2), Mão e Cabeça.
-- Mostrar o modo ativo na tela de espera ("⚙ Modo de jogo: <nome>").
-- Guardar o modo escolhido no próprio notebook e reaplicá-lo ao reabrir o jogo, inclusive offline; sem valor guardado, ou com valor inválido, usar Corpo.
+- Oferecer, na tela de espera, o menu "Configurações" (tecla M ou botão "⚙ Configurações") com três itens:
+  - "Modo de jogo": Corpo (padrão, FR-2), Mão ou Cabeça.
+  - "Tempo por card": 10, 15 (padrão), 20, 25 ou 30 s.
+  - "Som": Ligado (padrão) ou Desligado.
+- Navegar no menu com ↑/↓ (item) e ←/→ (valor), ou com clique; fechar com Esc, M, Enter ou "Fechar", sem iniciar partida.
+- Mostrar na tela de espera o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
+- Aplicar o tempo por card a todos os cards da partida (AC-1.2, AC-4.4, AC-9.17).
+- Guardar as três configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
 - Modo Mão: própria mão direita acima do ombro (~300 ms) = match; mão esquerda = descarte; as duas mãos acima dos ombros (~500 ms) = saiba mais; exigir baixar as mãos entre duas escolhas.
 - Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; inclinar o card proporcionalmente à inclinação da cabeça.
 - Nos modos Mão e Cabeça, detectar presença e centralização pela parte de cima do corpo (ombros e rosto), para que um jogador sentado consiga calibrar.
 - Mostrar nas instruções da calibração e do card os gestos do modo ativo (AC-9.14).
-- Manter, em todos os modos, a entrada alternativa (FR-3), os tempos (FR-1), a pontuação e o sorteio (FR-5) e a seleção da pessoa mais central e maior no quadro (FR-2).
+- Manter, em todos os modos, a entrada alternativa (FR-3), os demais tempos (FR-1), a pontuação e o sorteio (FR-5) e a seleção da pessoa mais central e maior no quadro (FR-2).
+- Ignorar a câmera (presença e gestos) enquanto o menu estiver aberto.
 
 **Must not:**
-- Trocar o modo durante uma partida.
-- Guardar no notebook qualquer coisa além do modo de jogo escolhido.
+- Mudar qualquer configuração durante uma partida.
+- Guardar no notebook qualquer coisa além das três configurações.
 - Usar outra fonte de imagem além da câmera já autorizada, nem enviar imagens para fora do notebook.
+
+### FR-10: Iniciar e sair (adicionado v2.0.0)
+
+**Must:**
+- Mostrar na tela de espera o botão "▶ Iniciar", com o mesmo efeito de Enter (AC-1.6), desativado quando não há notícias.
+- Mostrar durante a calibração, o card, o feedback e o resumo o botão "✕ Sair" (nome acessível "Sair da partida"), num canto da tela, sem cobrir o card.
+- Encerrar a partida na hora com "✕ Sair" ou Esc, sem resumo, e voltar à tela de espera.
+
+**Must not:**
+- Guardar qualquer informação da partida encerrada.
+- Pedir confirmação para sair.
+
+### FR-11: Sons (adicionado v2.0.0)
+
+**Must:**
+- Tocar um som curto de "deslizar" quando uma escolha é registrada, por qualquer entrada.
+- Tocar um som positivo quando o feedback "Acertou!" aparece, e um som de erro, diferente, quando aparece "Errou" ou "Tempo esgotado".
+- Gerar os sons no próprio jogo, sem baixar arquivos nem depender de rede.
+- Respeitar a configuração "Som: Desligado" (FR-9).
+
+**Must not:**
+- Tocar sons fora desses três momentos (sem música de fundo).
+- Atrasar a troca de tela por causa de um som.
 
 ## Non-Functional Requirements
 
@@ -325,7 +388,8 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 | Planilha inacessível na publicação | A publicação falha com mensagem no resumo; o jogo publicado continua com o conteúdo anterior (AC-7.5). |
 | Jogo aberto offline antes de qualquer abertura online | Tela "Conecte à internet uma vez para baixar o jogo". |
 | Jogo offline com versão antiga | Joga normalmente com o conteúdo em cache; atualiza na próxima abertura online. |
-| Modo guardado ausente, inválido ou armazenamento do navegador indisponível | O jogo abre no modo Corpo; o menu continua funcionando, e a escolha vale até o jogo ser fechado. |
+| Configuração guardada ausente, inválida ou armazenamento do navegador indisponível | O jogo abre com o padrão daquele item (Corpo, 15 s, som ligado); o menu continua funcionando, e a escolha vale até o jogo ser fechado. |
+| Navegador bloqueia o som até a primeira interação com a página | O jogo funciona normalmente, sem som, até o primeiro clique ou tecla; a partir daí os sons tocam (o operador clica uma vez ao abrir o jogo). |
 | No modo Mão ou Cabeça, o jogador não consegue fazer o gesto | O operador troca o modo entre partidas, ou joga pelas setas (FR-3). |
 
 ## Open Questions
@@ -345,12 +409,20 @@ Decisões da v1.1.0, confirmadas pela responsável pelo projeto em 2026-10-27:
 - O operador escolhe o modo, e a escolha vale até ser trocada.
 - Os limiares (~15° de inclinação, "acima do ombro") e os tempos de permanência são pontos de partida, ajustados no teste com pessoas reais (Fase 7).
 
+Decisões da v2.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
+- O menu passa a se chamar "Configurações" e reúne modo de jogo, tempo por card (10–30 s, de 5 em 5, padrão 15 s) e som (ligado/desligado, padrão ligado).
+- "▶ Iniciar" faz o mesmo que Enter; "✕ Sair" (ou Esc) encerra a partida na hora, sem confirmação e sem resumo.
+- Sons: deslizar na escolha; positivo no acerto; erro no erro e no tempo esgotado.
+- O card fica centralizado na vertical.
+
 ## Out of Scope (Future Considerations)
 
 - Ranking (do dia ou on-line), apelidos e contas.
 - Modo celular individual e modo sala de aula.
 - Gestos de dedo (por exemplo, joinha ou mão aberta).
 - Ajuste de sensibilidade dos gestos pelo menu, ou modos além de Corpo, Mão e Cabeça.
+- Volume ajustável, música de fundo ou sons escolhidos pelo operador.
+- Configurar número de cards, tempo de feedback ou outros tempos além do tempo por card.
 - Relatório de validação escrito de volta na planilha.
 - Configuração editável de número de cards e tempos pela planilha.
 - Telemetria e estatísticas de uso.

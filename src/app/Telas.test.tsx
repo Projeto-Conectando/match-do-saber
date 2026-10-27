@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Noticia } from '../core/types';
-import { MenuModo, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 
 const noticia: Noticia = {
   id: 'n1', titulo: 'Título X', descricao: 'Descrição Y', saibaMais: 'Mais Z', imagem: 'content/img/n1.webp',
@@ -73,21 +73,6 @@ describe('telas', () => {
 });
 
 describe('modos de jogo (v1.1.0)', () => {
-  it('AC-9.1/AC-9.2: espera mostra o modo ativo e abre o menu', () => {
-    const abrir = vi.fn();
-    render(<TelaEspera semNoticias={false} camera="ativa" modo="mao" onAbrirMenu={abrir} />);
-    fireEvent.click(screen.getByRole('button', { name: '⚙ Modo de jogo: Mão' }));
-    expect(abrir).toHaveBeenCalledOnce();
-  });
-  it('AC-9.1: menu lista os três modos, com o ativo marcado', () => {
-    const escolher = vi.fn();
-    render(<MenuModo ativo="corpo" destacado={0} onEscolher={escolher} onFechar={() => {}} />);
-    const menu = screen.getByRole('dialog', { name: 'Modo de jogo' });
-    expect(menu).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Corpo \(padrão\)/ })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: /Cabeça/ }));
-    expect(escolher).toHaveBeenCalledWith('cabeca');
-  });
   it.each([
     ['mao', 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais'],
     ['cabeca', 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais'],
@@ -101,5 +86,41 @@ describe('modos de jogo (v1.1.0)', () => {
   it('AC-9.14: no modo Cabeça, a dica do saiba mais fala do queixo', () => {
     render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} modo="cabeca" cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(screen.getByText('Saiba mais: levante o queixo (ou ↑)')).toBeInTheDocument();
+  });
+});
+
+describe('v2.0.0: configurações, iniciar e sair', () => {
+  it('AC-9.2/AC-10.1: espera mostra o resumo, Iniciar e Configurações', () => {
+    const iniciar = vi.fn();
+    const abrir = vi.fn();
+    render(<TelaEspera semNoticias={false} camera="ativa" config={{ modo: 'mao', tempoCardS: 20, som: false }} onAbrirMenu={abrir} onIniciar={iniciar} />);
+    expect(screen.getByText('Modo: Mão · Tempo por card: 20 s · Som: desligado')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '▶ Iniciar' }));
+    fireEvent.click(screen.getByRole('button', { name: '⚙ Configurações' }));
+    expect(iniciar).toHaveBeenCalledOnce();
+    expect(abrir).toHaveBeenCalledOnce();
+  });
+  it('AC-10.2: sem notícias, Iniciar fica desativado', () => {
+    render(<TelaEspera semNoticias camera="ativa" />);
+    expect(screen.getByRole('button', { name: '▶ Iniciar' })).toBeDisabled();
+  });
+  it('AC-9.1: menu mostra os três itens com os valores atuais marcados', () => {
+    const definir = vi.fn();
+    render(<MenuConfiguracoes config={{ modo: 'corpo', tempoCardS: 15, som: true }} itemDestacado={0} onDefinir={definir} onFechar={() => {}} />);
+    expect(screen.getByRole('dialog', { name: 'Configurações' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Modo de jogo' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Tempo por card' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Som' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '◉ Corpo' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '◉ 15 s' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '◉ Ligado' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '○ 25 s' }));
+    expect(definir).toHaveBeenCalledWith({ modo: 'corpo', tempoCardS: 25, som: true });
+  });
+  it('AC-10.5: botão Sair tem nome acessível "Sair da partida"', () => {
+    const sair = vi.fn();
+    render(<BotaoSair onSair={sair} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sair da partida' }));
+    expect(sair).toHaveBeenCalledOnce();
   });
 });

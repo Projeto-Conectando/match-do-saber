@@ -3,9 +3,10 @@ import { parseCatalogo } from '../core/catalogo';
 import { TEMPOS, pontos, tecnicasDaPartida, type Estado } from '../core/partida';
 import type { Noticia } from '../core/types';
 import { CameraPreview } from './CameraPreview';
-import { MenuModo, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { useConfiguracoes } from './useConfiguracoes';
 import { useJogo } from './useJogo';
-import { useModoJogo } from './useModoJogo';
+import { useSons } from './useSons';
 import s from './App.module.css';
 
 export function App() {
@@ -30,9 +31,10 @@ export function App() {
 function Jogo({ noticias }: { noticias: Noticia[] }) {
   const telaRef = useRef<Estado['tela']>('espera');
   const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
-  const modoJogo = useModoJogo(podeAbrirMenu);
-  const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, modoJogo.modo, modoJogo.menuAberto);
+  const cfg = useConfiguracoes(podeAbrirMenu);
+  const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto);
   telaRef.current = estado.tela;
+  useSons(estado, cfg.config.som);
   const cardRef = useRef<HTMLElement>(null);
   const cardSaindoRef = useRef<HTMLElement>(null); // fora do laço de inclinação
 
@@ -51,10 +53,18 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
   let tela;
   switch (estado.tela) {
     case 'espera':
-      tela = <TelaEspera semNoticias={noticias.length === 0} camera={camera} modo={modoJogo.modo} onAbrirMenu={modoJogo.abrir} />;
+      tela = (
+        <TelaEspera
+          semNoticias={noticias.length === 0}
+          camera={camera}
+          config={cfg.config}
+          onAbrirMenu={cfg.abrir}
+          onIniciar={() => despachar({ tipo: 'enter' })}
+        />
+      );
       break;
     case 'calibracao':
-      tela = <TelaCalibracao progresso={estado.centradoMs / TEMPOS.calibracaoMs} modo={modoJogo.modo} />;
+      tela = <TelaCalibracao progresso={estado.centradoMs / TEMPOS.calibracaoMs} modo={cfg.config.modo} />;
       break;
     case 'card':
       tela = (
@@ -65,7 +75,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           saibaMais={estado.saibaMais}
           ausente={estado.ausenteMs !== null}
           pontos={pontos(estado.partida)}
-          modo={modoJogo.modo}
+          modo={cfg.config.modo}
           cardRef={cardRef}
           onArrastar={(lado) => despachar({ tipo: 'escolha', resposta: lado === 'direita' ? 'verdadeira' : 'falsa' })}
         />
@@ -83,7 +93,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           saibaMais={false}
           ausente={false}
           pontos={pontos(estado.partida)}
-          modo={modoJogo.modo}
+          modo={cfg.config.modo}
           saida={estado.resposta === 'verdadeira' ? 'direita' : 'esquerda'}
           cardRef={cardSaindoRef}
           onArrastar={() => {}}
@@ -104,8 +114,9 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       {camera === 'indisponivel' && estado.tela !== 'espera' && (
         <p className={s.faixa}>Câmera indisponível — use as setas</p>
       )}
-      {modoJogo.menuAberto && (
-        <MenuModo ativo={modoJogo.modo} destacado={modoJogo.destacado} onEscolher={modoJogo.escolher} onFechar={modoJogo.fechar} />
+      {estado.tela !== 'espera' && <BotaoSair onSair={() => despachar({ tipo: 'sair' })} />}
+      {cfg.menuAberto && (
+        <MenuConfiguracoes config={cfg.config} itemDestacado={cfg.itemDestacado} onDefinir={cfg.definir} onFechar={cfg.fechar} />
       )}
       <CameraPreview videoRef={videoRef} poseRef={poseRef} visivel={camera === 'ativa'} />
     </div>
