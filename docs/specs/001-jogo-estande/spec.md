@@ -1,0 +1,291 @@
+# Feature 001: Match do Saber — jogo de estande (MVP)
+
+**Status:** Approved
+**Created:** 2026-10-26
+**Branch:** `001-jogo-estande`
+**Origem:** [prd.md](prd.md) · ADRs: [frontend-stack](../../adr/001-frontend-stack.md), [motion-input](../../adr/001-motion-input.md), [content-pipeline](../../adr/001-content-pipeline.md)
+
+---
+
+## Problem Statement
+
+Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com imagens exageradas e títulos chamativos, e raramente param para checar antes de acreditar ou compartilhar. Faltam experiências curtas e divertidas que pratiquem técnicas reais de checagem (fonte, data, imagem, contexto) em vez de só dizer "isso é fake". O Match do Saber leva essa prática a estandes de eventos, num formato de "match" com notícias que qualquer pessoa entende em segundos e que o público ao redor consegue acompanhar.
+
+## Goals
+
+- Um jogador completa uma partida de até 10 cards usando só movimentos do corpo, sem tocar em teclado, mouse ou tela.
+- Todo card jogado termina com o veredito, a explicação e a técnica de checagem da notícia, qualquer que seja o resultado.
+- O jogo roda uma partida completa, com imagens, sem conexão com a internet, depois de ter sido aberto online uma vez após a última publicação.
+- O jogo pode ser instalado no notebook e aberto por um ícone, como um aplicativo.
+- Uma pessoa não programadora publica ou altera notícias sem ajuda técnica, e só notícias aprovadas, com fonte e revisor, chegam ao jogo.
+- Nenhuma imagem da câmera e nenhum dado de jogador sai do notebook ou fica salvo.
+
+## Non-Goals
+
+- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo.
+- Modo para celular individual ou para sala de aula.
+- Multiplayer ou várias pessoas jogando ao mesmo tempo.
+- Painel administrativo próprio: a planilha de conteúdo é o painel.
+- Atualização do conteúdo durante uma partida em andamento.
+
+## Users and Context
+
+**Primary users:** jogadores, que são estudantes do ensino médio e jovens adultos (muitos menores de idade) jogando um por vez num estande de evento.
+**Secondary users:**
+- Operador do estande: liga o notebook, abre o jogo e intervém pelo teclado se a detecção de movimento falhar.
+- Equipe de conteúdo (não programadora): cadastra, revisa e publica as notícias numa planilha on-line. Tem acesso de leitura ao repositório para ver o resumo de cada publicação.
+**Usage context:** feira, gincana ou festival, com fila e público assistindo. O jogador fica de pé a ~1,5–2 m de um notebook com webcam, às vezes ligado a uma TV. O Wi-Fi do evento é instável.
+**User mental model:** "é tipo Tinder de notícia": arrastar para a direita é dar match (acredito que é verdadeira), para a esquerda é descartar (acho que é falsa). Vocabulário: card, match, descartar, saiba mais, verdadeira, falsa, fonte.
+
+## User Stories
+
+### Story 1: Começar uma partida pelo movimento
+
+**As a** jogador na fila do estande
+**I want** que o jogo perceba que cheguei e me prepare para jogar
+**So that** eu comece sem precisar de ajuda nem tocar no notebook
+
+**Acceptance criteria:**
+
+- [ ] **AC-1.1** Given o jogo está na tela de espera e ninguém está diante da câmera When uma pessoa entra no quadro Then a tela muda para a calibração com a instrução "Fique no centro".
+- [ ] **AC-1.2** Given a tela de calibração When a pessoa permanece na área central por 2 s contínuos Then a partida começa e o primeiro card aparece com o cronômetro em 15 s.
+- [ ] **AC-1.3** Given a tela de calibração When a pessoa sai da área central antes de 2 s Then a contagem de calibração reinicia do zero.
+- [ ] **AC-1.4** Given a tela de calibração When ninguém é detectado por 10 s Then o jogo volta à tela de espera.
+- [ ] **AC-1.5** Given há duas ou mais pessoas no quadro When a calibração ou a partida acontece Then apenas a pessoa mais central e maior no quadro controla o jogo, e os movimentos das demais não geram escolhas.
+- [ ] **AC-1.6** Given a tela de espera When o operador pressiona Enter Then a partida começa sem calibração e é controlada por teclado e mouse/toque.
+
+### Story 2: Escolher match ou descarte com o corpo
+
+**As a** jogador
+**I want** dar match ou descartar um card deslocando o corpo para um lado
+**So that** eu jogue de forma divertida e visível para quem está assistindo
+
+**Acceptance criteria:**
+
+- [ ] **AC-2.1** Given um card está na tela When o jogador desloca o tronco para a **própria direita** além do limiar e se mantém por ~300 ms Then o card é registrado como "match" (resposta "verdadeira") e sai pela direita da tela.
+- [ ] **AC-2.2** Given um card está na tela When o jogador desloca o tronco para a **própria esquerda** além do limiar e se mantém por ~300 ms Then o card é registrado como "descarte" (resposta "falsa") e sai pela esquerda da tela.
+- [ ] **AC-2.3** Given um card está na tela When o jogador inclina o tronco para um lado sem atingir o limiar Then o card inclina na mesma direção, proporcionalmente, e nenhuma escolha é registrada.
+- [ ] **AC-2.4** Given o jogador acabou de fazer uma escolha When o próximo card aparece e o jogador ainda está deslocado para um lado Then nenhuma nova escolha é aceita até ele voltar à área central.
+- [ ] **AC-2.5** Given um card está na tela When o operador pressiona → ou ← (ou arrasta o card com mouse/toque para a direita ou esquerda) Then o resultado é o mesmo de AC-2.1 ou AC-2.2, respectivamente.
+- [ ] **AC-2.6** Given a câmera está ativa durante a partida When o jogador olha para a tela Then ele vê uma prévia pequena e espelhada de si mesmo com o esqueleto detectado desenhado por cima.
+
+### Story 3: Ver "saiba mais" antes de decidir
+
+**As a** jogador em dúvida
+**I want** abrir o texto completo de uma notícia
+**So that** eu tenha mais pistas antes de escolher
+
+**Acceptance criteria:**
+
+- [ ] **AC-3.1** Given um card está na tela When o jogador mantém os dois punhos acima da cabeça (acima do nariz) por ~500 ms Then o texto "saiba mais" do card é exibido e o cronômetro pausa.
+- [ ] **AC-3.2** Given o "saiba mais" está aberto When o jogador repete o gesto de duas mãos para cima (ou o operador pressiona ↑) Then o "saiba mais" fecha e o cronômetro retoma do ponto em que parou.
+- [ ] **AC-3.3** Given o "saiba mais" está aberto When o jogador faz o gesto de match ou de descarte Then o "saiba mais" fecha e a escolha é registrada normalmente.
+- [ ] **AC-3.4** Given um card está na tela When o operador pressiona ↑ Then o resultado é o mesmo de AC-3.1.
+- [ ] **AC-3.5** Given o "saiba mais" está aberto When se passam 5 s sem gesto nem tecla Then o "saiba mais" fecha sozinho e o cronômetro retoma.
+
+### Story 4: Aprender com cada resposta
+
+**As a** jogador
+**I want** saber logo depois de cada card se acertei e por quê
+**So that** eu aprenda a técnica de checagem, não só o resultado
+
+**Acceptance criteria:**
+
+- [ ] **AC-4.1** Given o jogador escolheu um card When a escolha corresponde ao veredito da notícia Then aparece por 3 s o selo "Acertou!" com o veredito (verdadeira/falsa), a explicação e a técnica de checagem da notícia, e o placar soma +1.
+- [ ] **AC-4.2** Given o jogador escolheu um card When a escolha não corresponde ao veredito Then aparece por 3 s o selo "Errou" com o veredito, a explicação e a técnica, e o placar não muda.
+- [ ] **AC-4.3** Given um card está na tela When o cronômetro chega a 0 sem escolha Then aparece por 3 s o selo "Tempo esgotado" com o veredito, a explicação e a técnica, e o placar não muda.
+- [ ] **AC-4.4** Given o feedback de um card terminou When ainda há cards na partida Then o próximo card aparece com o cronômetro em 15 s.
+
+### Story 5: Ver o resumo e liberar o estande
+
+**As a** jogador que terminou a partida
+**I want** ver como fui e o que aprendi
+**So that** eu saia sabendo o que praticar, e a fila ande
+
+**Acceptance criteria:**
+
+- [ ] **AC-5.1** Given o último card da partida teve seu feedback concluído When a partida termina Then a tela de resumo mostra os pontos no formato "N de M" e a lista das técnicas de checagem que apareceram na partida, sem repetição.
+- [ ] **AC-5.2** Given a tela de resumo está aberta When o tempo passa sem ação do operador Then o resumo continua na tela, sem limite de tempo, mesmo que o jogador saia do quadro.
+- [ ] **AC-5.6** Given a tela de resumo está aberta When o operador pressiona Enter (iniciar nova partida) Then o resumo fecha, nada da partida anterior é guardado e o jogo vai para a calibração da nova partida (ou inicia direto pela entrada alternativa, se a câmera estiver indisponível).
+- [ ] **AC-5.3** Given uma partida está em andamento When ninguém é detectado na câmera Then o cronômetro pausa e aparece a mensagem "Volte para o centro".
+- [ ] **AC-5.4** Given a mensagem "Volte para o centro" está na tela When a pessoa volta ao quadro antes de 10 s Then a partida continua do mesmo card, com o cronômetro retomando de onde parou.
+- [ ] **AC-5.5** Given a mensagem "Volte para o centro" está na tela When se passam 10 s sem ninguém no quadro Then a partida é encerrada sem resumo e o jogo volta à tela de espera.
+
+### Story 6: Montar uma partida equilibrada
+
+**As a** equipe de conteúdo
+**I want** que cada partida tenha uma mistura justa de notícias verdadeiras e falsas
+**So that** o jogador não ganhe chutando sempre o mesmo lado
+
+**Acceptance criteria:**
+
+- [ ] **AC-6.1** Given há pelo menos 5 notícias verdadeiras e 5 falsas publicadas When uma partida começa Then ela tem 10 cards, 5 verdadeiros e 5 falsos, sem repetição, em ordem aleatória.
+- [ ] **AC-6.2** Given há menos de 5 notícias de um dos lados e pelo menos 10 publicadas no total When uma partida começa Then ela tem 10 cards, com todas as notícias do lado menor e o restante completado com o outro lado.
+- [ ] **AC-6.3** Given há entre 1 e 9 notícias publicadas When uma partida começa Then ela usa todas as notícias disponíveis, em ordem aleatória.
+- [ ] **AC-6.4** Given não há nenhuma notícia publicada When o jogo é aberto Then a tela de espera mostra "Nenhuma notícia publicada" e nenhuma partida pode começar.
+
+### Story 7: Publicar notícias pela planilha
+
+**As a** pessoa da equipe de conteúdo, não programadora
+**I want** cadastrar notícias numa planilha e publicá-las com um clique
+**So that** o jogo tenha conteúdo novo sem depender de programador
+
+**Acceptance criteria:**
+
+- [ ] **AC-7.1** Given a planilha de conteúdo está aberta When a pessoa preenche uma linha Then as colunas `veredito`, `tecnica` e `status` só aceitam os valores das listas (`verdadeira`/`falsa`; `fonte`/`data`/`imagem`/`contexto`; `rascunho`/`aprovada`), e cada campo obrigatório vazio aparece destacado.
+- [ ] **AC-7.2** Given a planilha tem linhas com `status = aprovada` e todos os campos obrigatórios preenchidos When a pessoa escolhe o menu "Publicar no jogo" Then a planilha confirma que a publicação foi iniciada e, quando ela termina, essas notícias estão no jogo publicado.
+- [ ] **AC-7.3** Given uma linha com `status = rascunho`, ou sem `fonte_url`, sem `revisado_por`, com imagem inacessível ou com qualquer campo obrigatório vazio When a publicação roda Then essa notícia não entra no jogo e aparece no resumo da publicação com o `id` e o motivo.
+- [ ] **AC-7.4** Given a publicação terminou When o notebook do estande abre ou recarrega o jogo com internet Then em até ~10 min o jogo passa a mostrar o conteúdo novo, sem nenhuma ação técnica.
+- [ ] **AC-7.5** Given a publicação falhou (por exemplo, planilha inacessível) When a pessoa consulta o resumo da publicação Then vê a mensagem de erro, e o jogo publicado continua com o conteúdo anterior.
+
+### Story 8: Jogar offline no estande
+
+**As a** operador do estande
+**I want** que o jogo funcione mesmo sem internet
+**So that** a queda do Wi-Fi do evento não pare o estande
+
+**Acceptance criteria:**
+
+- [ ] **AC-8.1** Given o jogo foi aberto online uma vez depois da última publicação When o notebook fica sem internet e o operador abre o jogo Then uma partida completa roda com todas as imagens e com a detecção de movimento funcionando.
+- [ ] **AC-8.2** Given o navegador do notebook oferece instalação When o operador instala o jogo Then ele abre por um ícone, em janela própria e em tela cheia, sem barra de endereço.
+- [ ] **AC-8.3** Given o jogo está aberto sem internet When o operador recarrega a página Then o jogo volta a abrir normalmente, sem tela de erro de conexão.
+
+## Functional Requirements
+
+### FR-1: Fluxo de estados da partida
+
+O jogo passa por estes estados: espera → calibração → card → (saiba mais) → feedback → … → resumo → espera, além do estado "Volte para o centro" durante a partida.
+
+**Must:**
+- Começar a partida só depois de 2 s contínuos de calibração, ou por Enter do operador.
+- Ter 15 s por card, 3 s de feedback, 5 s de inatividade para fechar o "saiba mais" e 10 s de tolerância sem pessoa no quadro.
+- Manter o resumo na tela até o operador iniciar uma nova partida (Enter).
+- Pausar o cronômetro do card durante o "saiba mais" e durante "Volte para o centro".
+
+**Must not:**
+- Guardar qualquer informação da partida depois de uma nova partida começar ou de o jogo voltar à tela de espera.
+- Aceitar uma escolha durante o feedback, o resumo ou a calibração.
+
+### FR-2: Entrada por movimento do corpo
+
+**Must:**
+- Reconhecer três gestos: tronco deslocado para a própria direita (match), para a própria esquerda (descarte) e dois punhos acima do nariz (saiba mais), com os tempos de permanência de AC-2.1, AC-2.2 e AC-3.1.
+- Tomar "direita" e "esquerda" do ponto de vista do jogador, coerentes com a prévia espelhada e com as setas do teclado.
+- Medir o deslocamento em relação à posição central registrada na calibração da partida.
+- Exigir retorno à área central entre duas escolhas.
+- Seguir só a pessoa mais central e maior no quadro.
+- Mostrar a inclinação proporcional do card e a prévia espelhada com esqueleto.
+
+**Must not:**
+- Gravar, armazenar ou transmitir imagens ou vídeo da câmera.
+- Registrar duas escolhas para um mesmo card.
+
+### FR-3: Entrada alternativa
+
+**Must:**
+- Aceitar, a qualquer momento: → (match), ← (descarte), ↑ (abrir/fechar saiba mais), Enter (iniciar partida, inclusive a partir do resumo), e arrastar o card com mouse ou toque para a direita ou a esquerda.
+- Permitir jogar uma partida inteira só com a entrada alternativa, inclusive quando a câmera não está disponível ou não foi autorizada.
+
+### FR-4: Conteúdo do card e do feedback
+
+**Must:**
+- Mostrar no card: imagem, título e descrição curta da notícia, além do cronômetro e de uma indicação de como abrir o "saiba mais".
+- Mostrar no "saiba mais" o texto expandido da notícia.
+- Mostrar no feedback, para todo resultado: selo ("Acertou!", "Errou", "Tempo esgotado"), veredito, explicação e técnica de checagem.
+- Mostrar todos os textos em português do Brasil.
+
+**Must not:**
+- Cortar título ou descrição do card: todo o texto cadastrado aparece por inteiro numa tela de 1366×768 ou maior.
+
+### FR-5: Pontuação e sorteio
+
+**Must:**
+- Somar +1 por acerto e 0 por erro ou tempo esgotado.
+- Sortear os cards conforme AC-6.1 a AC-6.4, sem repetição dentro da partida.
+
+### FR-6: Planilha de conteúdo
+
+Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais`, `imagem` (link de compartilhamento de arquivo), `veredito`, `explicacao`, `tecnica`, `fonte_url`, `revisado_por`, `status`.
+
+**Must:**
+- Ter todas as colunas obrigatórias.
+- Restringir `veredito`, `tecnica` e `status` às listas de valores de AC-7.1.
+- Destacar visualmente campos obrigatórios vazios.
+- Oferecer o menu "Publicar no jogo".
+
+### FR-7: Publicação e validação do conteúdo
+
+**Must:**
+- Publicar apenas linhas com `status = aprovada` e todos os campos obrigatórios preenchidos, com `fonte_url` sendo um link válido e a imagem acessível.
+- Listar no resumo da publicação cada linha descartada, com `id` e motivo.
+- Embutir no jogo publicado as imagens das notícias, de forma que elas não dependam do serviço de origem durante o jogo.
+- Manter o conteúdo anteriormente publicado se a publicação falhar.
+
+**Must not:**
+- Publicar notícia com `id` duplicado: todas as linhas com o mesmo `id` são descartadas e listadas no resumo.
+- Exigir que a pessoa de conteúdo edite código ou arquivos do jogo.
+
+### FR-8: Instalação e funcionamento offline
+
+**Must:**
+- Ser instalável no navegador do notebook e abrir em janela própria.
+- Funcionar sem internet, com app, notícias, imagens e detecção de movimento, depois de uma abertura online.
+- Atualizar sozinho para a versão publicada mais recente quando aberto com internet.
+
+## Non-Functional Requirements
+
+### Performance
+
+- O gesto é confirmado em até 1 s depois de o jogador atingir a posição (já contando o tempo de permanência), num notebook comum com webcam de 720p.
+- A prévia da câmera e a inclinação do card atualizam a pelo menos 15 quadros por segundo nesse notebook.
+- Com o conteúdo já em cache, o jogo vai do clique no ícone à tela de espera em até 5 s.
+- A transição de um card para o próximo (depois do feedback) leva menos de 300 ms, sem imagem carregando visivelmente.
+
+### Security
+
+- Nenhuma requisição de rede contém imagem ou vídeo da câmera ou dados do jogador, o que é verificável pelo registro de rede do navegador durante uma partida.
+- O jogo não usa cookies, rastreadores nem scripts de análise de terceiros.
+- O acesso de leitura à planilha e o direito de disparar a publicação ficam em credenciais guardadas fora do código do jogo. O jogo publicado não contém nenhuma credencial.
+- A câmera só é ativada depois de o navegador pedir e o operador autorizar.
+
+### Reliability
+
+- Uma queda de internet durante a partida não interrompe nem altera a partida.
+- Se a câmera ficar indisponível durante a partida, o jogo mostra o aviso "Câmera indisponível — use as setas" e continua aceitando a entrada alternativa.
+- O jogo roda 8 h seguidas de evento, com partidas consecutivas, sem precisar ser reaberto.
+
+## Error Scenarios
+
+| Scenario | Expected Behavior |
+|----------|-------------------|
+| Operador nega a permissão da câmera | A tela de espera mostra "Câmera desativada — jogue pelas setas (Enter para começar)"; o jogo funciona só com a entrada alternativa. |
+| Nenhuma webcam no notebook | Mesmo comportamento da permissão negada. |
+| Câmera desconectada no meio da partida | Aviso "Câmera indisponível — use as setas"; a partida continua e o cronômetro não pausa. |
+| Jogador sai do quadro durante a partida | Pausa com "Volte para o centro"; retoma se ele voltar em até 10 s; senão encerra sem resumo e volta à espera (AC-5.3 a AC-5.5). |
+| Iluminação ruim impede a detecção | A calibração não conclui e a mensagem "Fique no centro" continua; o operador pode começar com Enter e jogar pelas setas. |
+| Várias pessoas no quadro | Só a pessoa mais central e maior controla (AC-1.5). |
+| Nenhuma notícia publicada | Tela de espera com "Nenhuma notícia publicada"; não inicia partida (AC-6.4). |
+| Linha da planilha incompleta, em rascunho, com `id` duplicado ou com imagem inacessível | A linha não é publicada e aparece no resumo com o motivo (AC-7.3, FR-7). |
+| Planilha inacessível na publicação | A publicação falha com mensagem no resumo; o jogo publicado continua com o conteúdo anterior (AC-7.5). |
+| Jogo aberto offline antes de qualquer abertura online | Tela "Conecte à internet uma vez para baixar o jogo". |
+| Jogo offline com versão antiga | Joga normalmente com o conteúdo em cache; atualiza na próxima abertura online. |
+
+## Open Questions
+
+Nenhuma pendente. Decisões que o PRD não fixava, confirmadas pela responsável pelo projeto em 2026-10-26:
+- O "saiba mais" fecha sozinho após 5 s sem gesto nem tecla (AC-3.5).
+- O resumo fica na tela até o operador iniciar uma nova partida com Enter (AC-5.2, AC-5.6).
+- A partida pode começar por Enter, sem câmera (AC-1.6).
+- A tela de referência é 1366×768 (FR-4).
+- Linhas com `id` duplicado são descartadas (FR-7).
+- A meta de 8 h de operação contínua (Reliability).
+
+## Out of Scope (Future Considerations)
+
+- Ranking (do dia ou on-line), apelidos e contas.
+- Modo celular individual e modo sala de aula.
+- Gestos de mão/dedo.
+- Relatório de validação escrito de volta na planilha.
+- Configuração editável de número de cards e tempos pela planilha.
+- Telemetria e estatísticas de uso.
+- CMS próprio ou painel administrativo.
