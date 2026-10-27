@@ -52,10 +52,10 @@ describe('espera e calibração', () => {
 });
 
 describe('card', () => {
-  it('AC-4.1: acerto soma ponto e mostra feedback de 3 s', () => {
+  it('AC-4.1: acerto soma ponto e mostra feedback de 3 s (após a saída do card)', () => {
     const s0 = emCard();
     const s = reduzir(s0, { tipo: 'escolha', resposta: cardAtual(s0).veredito }, ctx());
-    expect(s).toMatchObject({ tela: 'feedback', restanteMs: TEMPOS.feedbackMs });
+    expect(s).toMatchObject({ tela: 'feedback', restanteMs: TEMPOS.saidaMs + TEMPOS.feedbackMs });
     if (s.tela !== 'feedback') throw new Error();
     expect(s.partida.resultados).toEqual(['acerto']);
     expect(pontos(s.partida)).toBe(1);
@@ -76,13 +76,25 @@ describe('card', () => {
   });
   it.each(['verdadeira', 'falsa'] as const)('AC-2.1/AC-2.2: feedback guarda o lado escolhido (%s) para a animação de saída', (resposta) => {
     const s = reduzir(emCard(), { tipo: 'escolha', resposta }, ctx());
-    expect(s).toMatchObject({ tela: 'feedback', resposta, restanteMs: TEMPOS.feedbackMs });
+    expect(s).toMatchObject({ tela: 'feedback', resposta, restanteMs: TEMPOS.saidaMs + TEMPOS.feedbackMs });
+  });
+  it('AC-4.1/AC-4.2: após uma escolha, o feedback dura a saída do card (250 ms) + 3 s inteiros', () => {
+    expect(TEMPOS.saidaMs).toBe(250);
+    const s1 = reduzir(emCard(), { tipo: 'escolha', resposta: 'falsa' }, ctx());
+    expect(rodar(s1, [tick(3249)])).toMatchObject({ tela: 'feedback', indice: 0 });
+    expect(rodar(s1, [tick(3250)])).toMatchObject({ tela: 'card', indice: 1 });
+  });
+  it('AC-4.3: após tempo esgotado (sem saída do card), o feedback dura exatamente 3 s', () => {
+    const s1 = rodar(emCard(), [tick(TEMPOS.cardMs)]);
+    expect(s1).toMatchObject({ tela: 'feedback', resposta: null, restanteMs: TEMPOS.feedbackMs });
+    expect(rodar(s1, [tick(2999)])).toMatchObject({ tela: 'feedback', indice: 0 });
+    expect(rodar(s1, [tick(3000)])).toMatchObject({ tela: 'card', indice: 1 });
   });
   it('AC-4.4: depois do feedback vem o próximo card com 15 s; escolha no feedback é ignorada', () => {
     const s1 = reduzir(emCard(), { tipo: 'escolha', resposta: 'falsa' }, ctx());
     const s2 = reduzir(s1, { tipo: 'escolha', resposta: 'falsa' }, ctx());
     expect(s2).toBe(s1);
-    expect(rodar(s1, [tick(3000)])).toMatchObject({ tela: 'card', indice: 1, restanteMs: TEMPOS.cardMs });
+    expect(rodar(s1, [tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)])).toMatchObject({ tela: 'card', indice: 1, restanteMs: TEMPOS.cardMs });
   });
   it('AC-3.1/AC-3.2: saiba mais pausa e retoma o cronômetro', () => {
     const s = rodar(emCard(), [tick(1000), { tipo: 'saibaMais' }, tick(3000)]);
@@ -134,7 +146,7 @@ describe('card', () => {
 describe('resumo', () => {
   const jogarTudo = (c = ctx()) => {
     let s = emCard(c);
-    for (let i = 0; i < 3; i++) s = rodar(s, [{ tipo: 'escolha', resposta: 'verdadeira' }, tick(3000)], c);
+    for (let i = 0; i < 3; i++) s = rodar(s, [{ tipo: 'escolha', resposta: 'verdadeira' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
     return s;
   };
   it('AC-5.1: resumo com pontos e técnicas sem repetição', () => {

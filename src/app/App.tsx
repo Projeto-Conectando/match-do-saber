@@ -7,9 +7,6 @@ import { TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from '
 import { useJogo } from './useJogo';
 import s from './App.module.css';
 
-// Animação de saída do card respondido; sai da janela de 3 s do feedback (TEMPOS inalterado).
-const SAIDA_MS = 250;
-
 export function App() {
   const [noticias, setNoticias] = useState<Noticia[] | null>(null);
   const [erro, setErro] = useState(false);
@@ -70,7 +67,8 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       break;
     case 'feedback': {
       const noticia = estado.partida.cards[estado.indice]!;
-      const saindo = estado.resposta !== null && TEMPOS.feedbackMs - estado.restanteMs < SAIDA_MS;
+      // Após uma escolha, os primeiros TEMPOS.saidaMs do feedback são a saída do card; depois, 3 s de resultado.
+      const saindo = estado.resposta !== null && estado.restanteMs > TEMPOS.feedbackMs;
       tela = saindo ? (
         <TelaCard
           key={estado.indice}

@@ -4,6 +4,7 @@ import type { Noticia, Tecnica, Veredito } from './types';
 export const TEMPOS = {
   cardMs: 15000,
   feedbackMs: 3000,
+  saidaMs: 250,
   calibracaoMs: 2000,
   ausenciaMs: 10000,
   saibaMaisOciosoMs: 5000,
@@ -57,7 +58,8 @@ function registrar(e: EstadoCard, r: Resultado, resposta: Veredito | null): Esta
     tela: 'feedback',
     partida: { ...e.partida, resultados: [...e.partida.resultados, r] },
     indice: e.indice,
-    restanteMs: TEMPOS.feedbackMs,
+    // Escolha: o card sai antes (saidaMs) e o resultado ainda fica 3 s inteiros (AC-4.1/AC-4.2).
+    restanteMs: resposta === null ? TEMPOS.feedbackMs : TEMPOS.feedbackMs + TEMPOS.saidaMs,
     resposta,
   };
 }
