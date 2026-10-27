@@ -2,3 +2,4 @@
 
 - [Foundation](foundation.md) — missão e princípios do Match do Saber
 - Steering files em [steering/](steering/) — stack, testes, convenções, práticas de equipe
+- [Status do MVP e Fase 7](mvp-status-fase7.md) — MVP na main; verificação manual e setup GitHub/Google pendentes (prazo 2026-11-09)
