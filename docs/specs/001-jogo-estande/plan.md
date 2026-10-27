@@ -3748,6 +3748,8 @@ Decisões técnicas (inline, sem ADR novo):
   - Desligar o som no menu e confirmar o silêncio.
 - [ ] Sem nenhum clique ao abrir (só gestos), registrar se o navegador bloqueia o som. Esperado: bloqueia até a primeira interação, como na linha da tabela de erros.
 - [ ] Jogar uma partida com 30 s por card e outra com 10 s. Conferir se o tempo é adequado para leitores mais lentos e para fila cheia.
+- [ ] Com a faixa "Câmera indisponível" na tela, conferir se o botão "✕ Sair" (no canto superior esquerdo) atrapalha a leitura da faixa; se atrapalhar, dar `padding-inline` à `.faixa` (revisão v2.0.0).
+- [ ] Apertar "✕ Sair" com o jogador ainda na frente da câmera: o jogo volta à espera e, como a pessoa continua no quadro, entra logo na calibração (AC-1.1). Conferir com o operador se isso é aceitável no estande.
 
 ---
 
