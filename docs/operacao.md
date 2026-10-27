@@ -24,4 +24,4 @@
 4. Teclas: → verdade, ← falsa, ↑ saiba mais, Enter iniciar / próxima partida.
 5. Clique uma vez na tela do jogo depois de abri-lo: o navegador só libera o som depois de uma interação.
 6. Configurações (tecla M ou botão "⚙ Configurações", só na tela de espera): modo de jogo (Corpo, Mão, Cabeça), tempo por card (10–30 s) e som. Ficam guardadas no notebook.
-7. "▶ Iniciar" começa uma partida pelas setas; "✕ Sair" (ou Esc) encerra a partida na hora.
+7. O jogo nunca começa sozinho: o operador aperta "▶ Iniciar" (ou Enter). Com a câmera ativa, abre a calibração ("Fique no centro", 2 s) e a partida começa; Enter na calibração a pula e joga pelas setas. Sem câmera, começa direto. "✕ Sair" (ou Esc) encerra a partida na hora e o jogo fica na espera.

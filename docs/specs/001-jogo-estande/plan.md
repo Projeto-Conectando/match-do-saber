@@ -12,6 +12,7 @@
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
 - (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
+- (v3.0.0) Início só manual: a câmera nunca inicia nada; "▶ Iniciar" ou Enter na espera abre a calibração (câmera ativa) ou começa direto (sem câmera); Enter na calibração a pula. Sair, ausência de 10 s e o fim de calibração vazia deixam o jogo na espera.
 - (v2.0.0) Menu "Configurações": modo, tempo por card (10, 15, 20, 25, 30 s) e som (ligado/desligado). Botões "▶ Iniciar" (= Enter) e "✕ Sair" (= Esc, encerra sem resumo). Sons sintetizados: deslizar na escolha, positivo no acerto, erro no erro e no tempo esgotado. Card centralizado na vertical.
 - Todos os textos em português do Brasil.
 - Nada da câmera é gravado ou transmitido; nenhum cookie, rastreador ou analytics; o app publicado não contém credenciais.
@@ -3753,6 +3754,163 @@ Decisões técnicas (inline, sem ADR novo):
 
 ---
 
+## Phase 12 (added v3.0.0): Início só manual
+
+**Implements:** FR-1 (reescrito), FR-10 | **Satisfies:** AC-1.1, AC-1.4, AC-1.6, AC-1.7, AC-1.8, AC-5.5, AC-10.1, AC-10.3
+**Files:** `src/core/partida.ts`, `src/core/partida.test.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `tests/e2e/inicio-manual.spec.ts, `docs/operacao.md`
+**Interfaces:** Consumes: `reduzir`, `ESTADO_INICIAL`, `Contexto.cameraAtiva`, o evento `{ tipo: 'enter' }` e o estado `calibracao` (`src/core/partida.ts`, Fases 3 e 10); `TelaEspera` (`src/app/Telas.tsx`, Fase 10). Produces: nenhum nome novo. O comportamento de `reduzir` muda e `TelaEspera` muda o texto de chamada.
+
+Causa raiz (investigação do bug "o jogo começa e recomeça sozinho"): no `case 'espera'` de `reduzir`, qualquer tick com `presenca.presente` leva à `CALIBRACAO`, e a calibração inicia a partida depois de 2 s no centro. Depois de uma partida acabar por ausência, de "✕ Sair" ou de a calibração ficar vazia, o estado volta à espera e, se a pessoa continua no quadro, o ciclo recomeça sozinho. A spec v1.x/v2.0.0 mandava isso (AC-1.1); a v3.0.0 reescreve. Reproduzido com eventos simulados (`presente`/`centralizado`) em 10 passos: espera → calibração → card → espera → calibração → card → Sair → espera → calibração → card.
+
+Itens invalidados pela v3.0.0:
+- o teste `AC-1.1: pessoa no quadro leva à calibração`
+- os testes que chegam à calibração por `tick(16)` em vez de Enter: AC-1.2, AC-1.3, AC-1.4, "Enter durante a calibração", `emCardCalibrado` e o caso `calibracao` de AC-10.3
+- o helper `emCard`, que assumia que Enter na espera inicia a partida mesmo com câmera ativa
+- o texto "Chegue mais perto e fique de frente para a câmera para jogar" da espera
+
+- [ ] Em `src/core/partida.test.ts`, trocar os dois helpers (Enter na espera abre a calibração com câmera ativa, e Enter na calibração a pula; sem câmera, o primeiro Enter já inicia e o segundo é ignorado no card, então o helper serve nos dois casos):
+  ```ts
+  /** Partida pelo teclado: Enter na espera abre a calibração (câmera ativa, AC-1.7) e Enter na calibração a pula (AC-1.8). */
+  const emCard = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, { tipo: 'enter' }], c);
+  /** Partida pelo corpo: Enter abre a calibração e 2 s no centro iniciam a partida (AC-1.2, AC-1.7). */
+  const emCardCalibrado = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16), tick(1000), tick(1000)], c);
+  ```
+- [ ] Em `src/core/partida.test.ts`, substituir o bloco `describe('espera e calibração', …)` inteiro por:
+  ```ts
+  describe('espera e calibração (v3.0.0: início só manual)', () => {
+    it('AC-1.1: a câmera nunca inicia nada: presença na espera não faz o jogo sair dela', () => {
+      let s: Estado = ESTADO_INICIAL;
+      for (const p of [lado, centro, ninguem, centro]) {
+        for (let i = 0; i < 300; i++) s = reduzir(s, tick(100, p), ctx());
+        expect(s).toBe(ESTADO_INICIAL);
+      }
+    });
+    it('AC-1.6: sem câmera, Enter inicia na hora, sem calibração', () => {
+      const c = ctx({ cameraAtiva: false });
+      const s = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, c);
+      expect(s).toMatchObject({ tela: 'card', indice: 0 });
+      if (s.tela !== 'card') throw new Error();
+      expect(s.partida.entrada).toBe('alternativa');
+    });
+    it('AC-1.7: com câmera ativa, Enter abre a calibração e a partida ainda não começa', () => {
+      expect(reduzir(ESTADO_INICIAL, { tipo: 'enter' }, ctx()).tela).toBe('calibracao');
+    });
+    it('AC-1.2: depois do Enter, 2 s contínuos no centro iniciam a partida com 15 s (entrada "corpo")', () => {
+      const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(1000), tick(1000)]);
+      expect(s).toMatchObject({ tela: 'card', indice: 0, restanteMs: TEMPOS.cardMs });
+      if (s.tela !== 'card') throw new Error();
+      expect(s.partida.entrada).toBe('corpo');
+    });
+    it('AC-1.3: sair do centro reinicia a contagem', () => {
+      const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(1500), tick(16, lado), tick(1500)]);
+      expect(s).toMatchObject({ tela: 'calibracao', centradoMs: 1500 });
+    });
+    it('AC-1.4: 10 s sem ninguém na calibração voltam à espera, e ela permanece mesmo com alguém no quadro depois', () => {
+      const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(5000, ninguem), tick(5000, ninguem)]);
+      expect(s.tela).toBe('espera');
+      expect(rodar(s, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
+    });
+    it('AC-1.8: Enter na calibração a pula e inicia pela entrada alternativa', () => {
+      const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16, lado), { tipo: 'enter' }]);
+      expect(s).toMatchObject({ tela: 'card', indice: 0 });
+      if (s.tela !== 'card') throw new Error();
+      expect(s.partida.entrada).toBe('alternativa');
+    });
+    it('AC-6.4: sem notícias, nem o Enter inicia', () => {
+      const c = ctx({ noticias: [] });
+      expect(rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16)], c).tela).toBe('espera');
+    });
+    it('AC-5.5/AC-10.3: depois de sair do quadro ou de Sair, com alguém no quadro, o jogo fica na espera', () => {
+      const perdida = rodar(emCardCalibrado(), [tick(6000, ninguem), tick(4000, ninguem)]);
+      expect(perdida.tela).toBe('espera');
+      expect(rodar(perdida, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
+      const depoisDeSair = reduzir(emCard(), { tipo: 'sair' }, ctx());
+      expect(rodar(depoisDeSair, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
+    });
+  });
+  ```
+- [ ] Em `src/core/partida.test.ts`, ajustar os dois testes de "Enter" restantes:
+  - Em `AC-1.6: partida iniciada por Enter com câmera ativa ignora ausência`, a primeira linha já usa `emCard(ctx({ cameraAtiva: true }))`; nada a mudar (o helper novo faz Enter duas vezes).
+  - Substituir `it('AC-1.6: Enter durante a calibração também inicia em modo alternativo', …)` por nada: o caso agora é o `AC-1.8` acima.
+  - No `it.each(['calibracao', …])('AC-10.3 …')`, trocar a linha do caso `calibracao` por: `if (onde === 'calibracao') s = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, c);`.
+- [ ] Rodar `npx vitest run src/core/partida.test.ts`. Esperado: FAIL no AC-1.1 (a espera ainda vai para a calibração), no AC-1.7 (Enter com câmera ainda inicia direto) e no teste de AC-5.5/AC-10.3.
+- [ ] Alterar `src/core/partida.ts`, `case 'espera'`:
+  ```ts
+  case 'espera': {
+    if (ctx.noticias.length === 0) return estado;
+    // v3.0.0: só o operador inicia (Enter ou "▶ Iniciar"); a presença na câmera nunca tira o jogo da espera (AC-1.1).
+    // Com câmera ativa, Enter abre a calibração (AC-1.7); sem câmera, a partida começa direto (AC-1.6).
+    if (evento.tipo === 'enter') return ctx.cameraAtiva ? CALIBRACAO : iniciarPartida(ctx, 'alternativa');
+    return estado;
+  }
+  ```
+  O `case 'calibracao'` não muda: Enter ali já pula a calibração (AC-1.8), e 10 s sem ninguém voltam à espera (AC-1.4).
+- [ ] Rodar `npx vitest run`. Esperado: PASS. `src/core/sons.test.ts` não muda: o contexto dele não tem câmera ativa.
+- [ ] Em `src/app/Telas.test.tsx`, acrescentar ao bloco `describe('v2.0.0: configurações, iniciar e sair', …)`:
+  ```tsx
+  it('v3.0.0: com câmera ativa, a espera manda apertar Iniciar e não promete início sozinho', () => {
+    render(<TelaEspera semNoticias={false} camera="ativa" />);
+    expect(screen.getByText('Aperte ▶ Iniciar (ou Enter) e fique de frente para a câmera')).toBeInTheDocument();
+    expect(screen.queryByText(/Chegue mais perto/)).not.toBeInTheDocument();
+  });
+  ```
+- [ ] Rodar `npx vitest run src/app/Telas.test.tsx`. Esperado: FAIL (texto antigo).
+- [ ] Em `src/app/Telas.tsx`, `TelaEspera`, trocar a chamada:
+  ```tsx
+  <p className={s.chamada}>Aperte ▶ Iniciar (ou Enter) e fique de frente para a câmera</p>
+  ```
+- [ ] Rodar `npx vitest run src/app`. Esperado: PASS.
+- [ ] Escrever `tests/e2e/inicio-manual.spec.ts` (sem câmera, como os outros E2E: o início só por ação do operador, e Sair não recomeça):
+  ```ts
+  import { expect, test, type Page } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+
+  async function abrir(page: Page) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto('/');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  }
+
+  test('AC-1.1/AC-10.3: o jogo não começa sozinho, e depois de Sair fica na espera', async ({ page }) => {
+    await abrir(page);
+    await page.waitForTimeout(3000);
+    await expect(page.locator('article')).toHaveCount(0);
+    await expect(page.getByText('Fique no centro')).toHaveCount(0);
+
+    await page.getByRole('button', { name: '▶ Iniciar' }).click();
+    await expect(page.locator('article')).toBeVisible();
+    await page.getByRole('button', { name: 'Sair da partida' }).click();
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await page.waitForTimeout(3000);
+    await expect(page.locator('article')).toHaveCount(0);
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  });
+  ```
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 21 + 1 = 22).
+- [ ] Em `docs/operacao.md`, trocar o passo 7 de "No dia do evento" por:
+  ```markdown
+  7. O jogo nunca começa sozinho: o operador aperta "▶ Iniciar" (ou Enter). Com a câmera ativa, abre a calibração ("Fique no centro", 2 s) e a partida começa; Enter na calibração a pula e joga pelas setas. Sem câmera, começa direto. "✕ Sair" (ou Esc) encerra a partida na hora e o jogo fica na espera.
+  ```
+- [ ] Commit: `fix(partida): start only by operator action, camera never starts the game (Phase 12: Início só manual)`
+
+---
+
+## Phase 13 (added v3.0.0): Verificação do início manual no hardware
+
+**Implements:** FR-1 | **Satisfies:** AC-1.1, AC-1.7, AC-1.8 (hardware)
+
+- [ ] Com a câmera ligada, ficar em frente ao notebook na tela de espera por 30 s: o jogo não pode começar nem abrir a calibração (AC-1.1).
+- [ ] Apertar "▶ Iniciar": abre "Fique no centro"; 2 s no centro iniciam a partida (AC-1.7, AC-1.2).
+- [ ] Sair da frente da câmera por 10 s durante a partida e voltar depois: o jogo fica na espera e não recomeça (AC-5.5).
+- [ ] Apertar "✕ Sair" com o jogador ainda no quadro: o jogo fica na espera.
+- [ ] Com iluminação ruim (ou a câmera tapada), apertar Enter duas vezes: a calibração é pulada e a partida roda pelas setas (AC-1.8).
+- [ ] Apertar "▶ Iniciar" nos primeiros segundos, enquanto a câmera ainda carrega: a partida começa direto, como sem câmera (AC-1.6). Conferir se isso é aceitável no estande.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -3760,7 +3918,7 @@ npm install
 npm run fixture          # 12 notícias de teste em public/content
 npm run dev              # abre http://localhost:5173, permitir câmera
 ```
-1. Fique no centro por 2 s. A partida começa.
+1. Aperte ▶ Iniciar (ou Enter) e fique no centro por 2 s. A partida começa. (v3.0.0: a câmera sozinha não inicia nada.)
 2. Desloque o tronco para a sua direita: o card sai pela direita e aparece "Acertou!" ou "Errou", com a explicação e a técnica.
 3. Levante as duas mãos: o "saiba mais" abre; espere 5 s e ele fecha.
 4. Termine os 10 cards. O resumo "N de 10" fica na tela; Enter inicia a calibração de uma nova partida.
@@ -3772,7 +3930,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 
   | FR | Fases |
   |---|---|
-  | FR-1 | 3, 5 |
+  | FR-1 | 3, 5, 12 (reescrito v3.0.0), 13 |
   | FR-2 | 4, 5 |
   | FR-3 | 5 |
   | FR-4 | 1 (limites), 5 |
@@ -3781,7 +3939,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-7 | 0, 1, 2, 6 |
   | FR-8 | 6 |
   | FR-9 (v1.1.0, reescrito v2.0.0) | 8, 9, 10, 11 |
-  | FR-10 (v2.0.0) | 10 |
+  | FR-10 (v2.0.0) | 10, 12 |
   | FR-11 (v2.0.0) | 10, 11 |
 
 - **ACs:** todas as 38 (AC-1.1–1.6, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.6, 6.1–6.4, 7.1–7.5, 8.1–8.3) aparecem num `Satisfies`. AC-1.5, 2.1–2.4, 2.6, 3.1 e 7.1 têm teste automatizado da lógica e verificação manual com hardware ou planilha real na Fase 7.
@@ -3797,3 +3955,5 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 2.0.0 | 8.3 | Parcialmente invalidada: o menu "Modo de jogo" é reescrito na Fase 10.4 |
 | 2.0.0 | 10 | Adicionada: Configurações (modo, tempo por card, som), Iniciar/Sair, sons e card centralizado |
 | 2.0.0 | 11 | Adicionada: verificação de configurações, sons e layout no hardware |
+| 3.0.0 | 12 | Adicionada: início só manual (a câmera deixa de iniciar a partida; Enter/Iniciar abre a calibração com câmera ativa) |
+| 3.0.0 | 13 | Adicionada: verificação do início manual no hardware |

@@ -72,8 +72,9 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
   switch (estado.tela) {
     case 'espera': {
       if (ctx.noticias.length === 0) return estado;
-      if (evento.tipo === 'enter') return iniciarPartida(ctx, 'alternativa');
-      if (evento.tipo === 'tick' && evento.presenca?.presente) return CALIBRACAO;
+      // v3.0.0: só o operador inicia (Enter ou "▶ Iniciar"); a presença na câmera nunca tira o jogo da espera (AC-1.1).
+      // Com câmera ativa, Enter abre a calibração (AC-1.7); sem câmera, a partida começa direto (AC-1.6).
+      if (evento.tipo === 'enter') return ctx.cameraAtiva ? CALIBRACAO : iniciarPartida(ctx, 'alternativa');
       return estado;
     }
     case 'calibracao': {

@@ -21,35 +21,64 @@ const tick = (dtMs: number, presenca: Presenca | null = centro): Evento => ({ ti
 function rodar(estado: Estado, eventos: Evento[], c = ctx()): Estado {
   return eventos.reduce((s, e) => reduzir(s, e, c), estado);
 }
-const emCard = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }], c);
-const emCardCalibrado = (c = ctx()) => rodar(ESTADO_INICIAL, [tick(16), tick(1000), tick(1000)], c);
+/** Partida pelo teclado: Enter na espera abre a calibração (câmera ativa, AC-1.7) e Enter na calibração a pula (AC-1.8). */
+const emCard = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, { tipo: 'enter' }], c);
+/** Partida pelo corpo: Enter abre a calibração e 2 s no centro iniciam a partida (AC-1.2, AC-1.7). */
+const emCardCalibrado = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16), tick(1000), tick(1000)], c);
 function cardAtual(s: Estado) {
   if (s.tela !== 'card') throw new Error(`esperava card, veio ${s.tela}`);
   return s.partida.cards[s.indice]!;
 }
 
-describe('espera e calibração', () => {
-  it('AC-1.1: pessoa no quadro leva à calibração', () => {
-    expect(reduzir(ESTADO_INICIAL, tick(16, lado), ctx()).tela).toBe('calibracao');
+describe('espera e calibração (v3.0.0: início só manual)', () => {
+  it('AC-1.1: a câmera nunca inicia nada: presença na espera não faz o jogo sair dela', () => {
+    let s: Estado = ESTADO_INICIAL;
+    for (const p of [lado, centro, ninguem, centro]) {
+      for (let i = 0; i < 300; i++) s = reduzir(s, tick(100, p), ctx());
+      expect(s).toBe(ESTADO_INICIAL);
+    }
   });
-  it('AC-1.2: 2 s contínuos no centro iniciam a partida com 15 s', () => {
-    const s = rodar(ESTADO_INICIAL, [tick(16), tick(1000), tick(1000)]);
+  it('AC-1.6: sem câmera, Enter inicia na hora, sem calibração', () => {
+    const c = ctx({ cameraAtiva: false });
+    const s = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, c);
+    expect(s).toMatchObject({ tela: 'card', indice: 0 });
+    if (s.tela !== 'card') throw new Error();
+    expect(s.partida.entrada).toBe('alternativa');
+  });
+  it('AC-1.7: com câmera ativa, Enter abre a calibração e a partida ainda não começa', () => {
+    expect(reduzir(ESTADO_INICIAL, { tipo: 'enter' }, ctx()).tela).toBe('calibracao');
+  });
+  it('AC-1.2: depois do Enter, 2 s contínuos no centro iniciam a partida com 15 s (entrada "corpo")', () => {
+    const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(1000), tick(1000)]);
     expect(s).toMatchObject({ tela: 'card', indice: 0, restanteMs: TEMPOS.cardMs });
+    if (s.tela !== 'card') throw new Error();
+    expect(s.partida.entrada).toBe('corpo');
   });
   it('AC-1.3: sair do centro reinicia a contagem', () => {
-    const s = rodar(ESTADO_INICIAL, [tick(16), tick(1500), tick(16, lado), tick(1500)]);
+    const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(1500), tick(16, lado), tick(1500)]);
     expect(s).toMatchObject({ tela: 'calibracao', centradoMs: 1500 });
   });
-  it('AC-1.4: 10 s sem ninguém na calibração volta à espera', () => {
-    const s = rodar(ESTADO_INICIAL, [tick(16), tick(5000, ninguem), tick(5000, ninguem)]);
+  it('AC-1.4: 10 s sem ninguém na calibração voltam à espera, e ela permanece mesmo com alguém no quadro depois', () => {
+    const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(5000, ninguem), tick(5000, ninguem)]);
     expect(s.tela).toBe('espera');
+    expect(rodar(s, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
   });
-  it('AC-1.6: Enter na espera inicia sem calibração', () => {
-    expect(emCard().tela).toBe('card');
+  it('AC-1.8: Enter na calibração a pula e inicia pela entrada alternativa', () => {
+    const s = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16, lado), { tipo: 'enter' }]);
+    expect(s).toMatchObject({ tela: 'card', indice: 0 });
+    if (s.tela !== 'card') throw new Error();
+    expect(s.partida.entrada).toBe('alternativa');
   });
-  it('AC-6.4: sem notícias, não inicia', () => {
+  it('AC-6.4: sem notícias, nem o Enter inicia', () => {
     const c = ctx({ noticias: [] });
     expect(rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(16)], c).tela).toBe('espera');
+  });
+  it('AC-5.5/AC-10.3: depois de sair do quadro ou de Sair, com alguém no quadro, o jogo fica na espera', () => {
+    const perdida = rodar(emCardCalibrado(), [tick(6000, ninguem), tick(4000, ninguem)]);
+    expect(perdida.tela).toBe('espera');
+    expect(rodar(perdida, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
+    const depoisDeSair = reduzir(emCard(), { tipo: 'sair' }, ctx());
+    expect(rodar(depoisDeSair, [tick(100), tick(5000), tick(5000)]).tela).toBe('espera');
   });
 });
 
@@ -128,11 +157,6 @@ describe('card', () => {
     expect(s).toMatchObject({ tela: 'card', indice: 0, restanteMs: 3000, ausenteMs: null });
     expect(rodar(s, [tick(3000, ninguem)]).tela).toBe('feedback');
   });
-  it('AC-1.6: Enter durante a calibração também inicia em modo alternativo', () => {
-    const s = rodar(ESTADO_INICIAL, [tick(16), { tipo: 'enter' }]);
-    if (s.tela !== 'card') throw new Error(s.tela);
-    expect(s.partida.entrada).toBe('alternativa');
-  });
   it('partida calibrada usa entrada "corpo" e pausa na ausência', () => {
     const s0 = emCardCalibrado();
     if (s0.tela !== 'card') throw new Error(s0.tela);
@@ -174,7 +198,7 @@ describe('resumo', () => {
 describe('v2.0.0: tempo por card e sair', () => {
   it('AC-9.17/AC-1.2/AC-4.4: o tempo configurado vale para todos os cards', () => {
     const c = ctx({ tempoCardMs: 20000 });
-    const s0 = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }], c);
+    const s0 = emCard(c);
     expect(s0).toMatchObject({ tela: 'card', restanteMs: 20000 });
     const s1 = rodar(s0, [{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
     expect(s1).toMatchObject({ tela: 'card', indice: 1, restanteMs: 20000 });
@@ -184,7 +208,7 @@ describe('v2.0.0: tempo por card e sair', () => {
   it.each(['calibracao', 'card', 'saibaMais', 'feedback', 'resumo'] as const)('AC-10.3: sair em %s volta à espera', (onde) => {
     const c = ctx();
     let s: Estado;
-    if (onde === 'calibracao') s = reduzir(ESTADO_INICIAL, tick(16, lado), c);
+    if (onde === 'calibracao') s = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, c);
     else if (onde === 'card') s = emCard(c);
     else if (onde === 'saibaMais') s = reduzir(emCard(c), { tipo: 'saibaMais' }, c);
     else if (onde === 'feedback') s = reduzir(emCard(c), { tipo: 'escolha', resposta: 'falsa' }, c);

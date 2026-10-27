@@ -123,4 +123,9 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sair da partida' }));
     expect(sair).toHaveBeenCalledOnce();
   });
+  it('v3.0.0: com câmera ativa, a espera manda apertar Iniciar e não promete início sozinho', () => {
+    render(<TelaEspera semNoticias={false} camera="ativa" />);
+    expect(screen.getByText('Aperte ▶ Iniciar (ou Enter) e fique de frente para a câmera')).toBeInTheDocument();
+    expect(screen.queryByText(/Chegue mais perto/)).not.toBeInTheDocument();
+  });
 });
