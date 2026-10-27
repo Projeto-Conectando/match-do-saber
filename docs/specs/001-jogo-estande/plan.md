@@ -4082,6 +4082,7 @@ Decisões técnicas (inline):
 - [ ] Com a câmera real, jogar uma partida em cada modo: o card não pode tremer nem inclinar antes da escolha; os gestos continuam funcionando como antes.
 - [ ] A ~2 m da TV, conferir se a barra e os segundos são legíveis, e se o pulso vermelho dos últimos 5 s chama a atenção sem esconder o texto.
 - [ ] Conferir que placar, dica do modo e prévia da câmera não ficam atrás da barra.
+- [ ] Com a equipe de conteúdo, olhar algumas notícias reais de técnica "imagem": a imagem do card agora é cortada em 16:9 (antes 4:3, mudado para o texto caber acima da barra). Conferir que a parte importante da foto continua visível.
 
 ---
 
