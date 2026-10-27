@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { criarInterpretador, escolherJogador, type Gesto, type Pose } from '../core/gestos';
+import type { ModoJogo } from '../core/modos';
 import { ESTADO_INICIAL, reduzir, type Contexto, type Estado, type Evento } from '../core/partida';
 import type { Noticia } from '../core/types';
 import { abrirCamera, criarRastreador, type Rastreador } from './rastreador';
@@ -19,7 +20,7 @@ const EVENTO_DA_TECLA: Record<string, Evento | undefined> = {
   Enter: { tipo: 'enter' },
 };
 
-export function useJogo(noticias: Noticia[]) {
+export function useJogo(noticias: Noticia[], modo: ModoJogo = 'corpo', pausado = false) {
   const [camera, setCamera] = useState<StatusCamera>('carregando');
   const ctx = useRef<Contexto>({ noticias, rng: Math.random, cameraAtiva: false });
   ctx.current = { noticias, rng: Math.random, cameraAtiva: camera === 'ativa' };
@@ -28,9 +29,16 @@ export function useJogo(noticias: Noticia[]) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const inclinacaoRef = useRef(0);
   const poseRef = useRef<Pose | null>(null);
-  const interp = useRef(criarInterpretador());
+  const interp = useRef(criarInterpretador(modo));
+  const pausadoRef = useRef(pausado);
+  pausadoRef.current = pausado;
   const rastreador = useRef<Rastreador | null>(null);
   const telaAnterior = useRef(estado.tela);
+
+  // O modo só muda na tela de espera (FR-9), então trocar o interpretador aqui não afeta uma partida.
+  useEffect(() => {
+    interp.current = criarInterpretador(modo);
+  }, [modo]);
 
   // Calibra o centro ao sair da calibração para o primeiro card.
   useEffect(() => {
@@ -92,9 +100,10 @@ export function useJogo(noticias: Noticia[]) {
         const pose = escolherJogador(r.detectar(video, agora));
         poseRef.current = pose;
         const leitura = interp.current.ler(pose, agora);
-        inclinacaoRef.current = leitura.inclinacao;
-        despachar({ tipo: 'tick', dtMs, presenca: leitura.presenca });
-        for (const g of leitura.gestos) despachar(EVENTO_DO_GESTO[g]);
+        // Com o menu "Modo de jogo" aberto, a câmera não gera presença nem gestos.
+        inclinacaoRef.current = pausadoRef.current ? 0 : leitura.inclinacao;
+        despachar({ tipo: 'tick', dtMs, presenca: pausadoRef.current ? null : leitura.presenca });
+        if (!pausadoRef.current) for (const g of leitura.gestos) despachar(EVENTO_DO_GESTO[g]);
       } else {
         poseRef.current = null;
         inclinacaoRef.current = 0;

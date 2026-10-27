@@ -50,3 +50,12 @@ Fallback sempre ativo: setas ← (descarta), → (match) e ↑ (saiba mais) do t
 - Iluminação ruim, roupas da mesma cor do fundo ou várias pessoas no quadro podem degradar a detecção. O fallback de teclado cobre o estande nesses casos.
 - A câmera exige contexto seguro (HTTPS ou localhost) e permissão do navegador no notebook.
 - Se no futuro o jogo for para celular individual, este ADR precisará ser revisto (gesto de cabeça/mão ou toque).
+
+## Addendum (spec v1.1.0, 2026-10-27)
+
+A spec ganhou os modos acessíveis Mão e Cabeça (FR-9). Eles continuam usando o MediaPipe Pose Landmarker lite desta decisão, sem modelo novo:
+- **Modo Mão:** punhos (15/16) acima dos ombros (11/12).
+- **Modo Cabeça:** inclinação calculada pelas orelhas (7/8) e "queixo para cima" pela posição do nariz (0) em relação às orelhas.
+
+O Face Landmarker foi considerado e descartado para não dobrar o download e o processamento por quadro. Se a detecção da cabeça se mostrar imprecisa no teste com pessoas reais, esta é a alternativa a reavaliar.
+

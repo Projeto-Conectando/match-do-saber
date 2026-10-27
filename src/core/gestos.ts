@@ -1,7 +1,9 @@
+import type { ModoJogo } from './modos';
 import type { Presenca } from './partida';
 
 export interface Ponto { x: number; y: number; visibility?: number }
 export type Pose = Ponto[];
+/** 'maosParaCima' é o gesto de "saiba mais" do modo ativo (no modo Cabeça, queixo para cima). */
 export type Gesto = 'direita' | 'esquerda' | 'maosParaCima';
 export interface LeituraGesto { presenca: Presenca; inclinacao: number; gestos: Gesto[] }
 export interface Interpretador { ler(pose: Pose | null, tMs: number): LeituraGesto; calibrar(): void }
@@ -12,15 +14,27 @@ export const CONFIG_GESTOS = {
   zonaCalibracao: 0.1,
   permanenciaLadoMs: 300,
   permanenciaMaosMs: 500,
+  margemMaoOmbro: 0.05,
+  limiarCabecaGraus: 15,
+  retornoCabecaGraus: 6,
+  limiarQueixo: 0.25,
 };
+type Config = typeof CONFIG_GESTOS;
 
-const NARIZ = 0, OMBRO_E = 11, OMBRO_D = 12, PUNHO_E = 15, PUNHO_D = 16;
+const NARIZ = 0, ORELHA_E = 7, ORELHA_D = 8, OMBRO_E = 11, OMBRO_D = 12, PUNHO_E = 15, PUNHO_D = 16;
+const AUSENTE: LeituraGesto = { presenca: { presente: false, centralizado: false }, inclinacao: 0, gestos: [] };
 
 /** Centro do tronco do ponto de vista do jogador (imagem espelhada) e largura dos ombros. */
 function medir(p: Pose): { cx: number; largura: number } {
   const a = p[OMBRO_E]!, b = p[OMBRO_D]!;
   return { cx: 1 - (a.x + b.x) / 2, largura: Math.abs(a.x - b.x) };
 }
+
+function presenca(cx: number, cfg: Config): Presenca {
+  return { presente: true, centralizado: Math.abs(cx - 0.5) < cfg.zonaCalibracao };
+}
+
+const limitar = (v: number) => Math.max(-1, Math.min(1, v));
 
 export function escolherJogador(poses: Pose[]): Pose | null {
   let melhor: Pose | null = null;
@@ -33,60 +47,140 @@ export function escolherJogador(poses: Pose[]): Pose | null {
   return melhor;
 }
 
-export function criarInterpretador(cfg = CONFIG_GESTOS): Interpretador {
+/** Detecta um deslocamento lateral mantido por `permanenciaLadoMs`, com retorno obrigatório ao centro. */
+function criarLado(limiar: number, retorno: number, cfg: Config) {
+  let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
+  let travado = false;
+  return {
+    zerar() { lado = null; },
+    ler(d: number, tMs: number): Gesto | null {
+      if (travado) {
+        if (Math.abs(d) < retorno) travado = false;
+        return null;
+      }
+      const dir = d > limiar ? 'direita' : d < -limiar ? 'esquerda' : null;
+      if (!dir) lado = null;
+      else if (lado?.gesto !== dir) lado = { gesto: dir, desde: tMs };
+      else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
+        travado = true;
+        lado = null;
+        return dir;
+      }
+      return null;
+    },
+  };
+}
+
+/** Dispara uma vez quando `ativo` fica verdadeiro por `ms`; rearma quando `ativo` volta a falso. */
+function criarGatilho(ms: number) {
+  let desde: number | null = null;
+  let disparado = false;
+  return {
+    zerar() { desde = null; },
+    ler(ativo: boolean, tMs: number): boolean {
+      if (!ativo) { desde = null; disparado = false; return false; }
+      if (desde === null) { desde = tMs; return false; }
+      if (!disparado && tMs - desde >= ms) { disparado = true; return true; }
+      return false;
+    },
+  };
+}
+
+function interpretadorCorpo(cfg: Config): Interpretador {
   let centro: number | null = null;
   let ultimoCx = 0.5;
-  let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
-  let travadoLado = false;
-  let maosDesde: number | null = null;
-  let travadoMaos = false;
-
+  const lado = criarLado(cfg.limiar, cfg.zonaRetorno, cfg);
+  const maos = criarGatilho(cfg.permanenciaMaosMs);
   return {
-    calibrar() {
-      centro = ultimoCx;
-    },
+    calibrar() { centro = ultimoCx; },
     ler(pose, tMs) {
-      if (!pose) {
-        lado = null;
-        maosDesde = null;
-        return { presenca: { presente: false, centralizado: false }, inclinacao: 0, gestos: [] };
-      }
+      if (!pose) { lado.zerar(); maos.zerar(); return AUSENTE; }
       const gestos: Gesto[] = [];
       const { cx } = medir(pose);
       ultimoCx = cx;
       const d = cx - (centro ?? 0.5);
-      const inclinacao = Math.max(-1, Math.min(1, d / cfg.limiar));
+      const g = lado.ler(d, tMs);
+      if (g) gestos.push(g);
+      const nariz = pose[NARIZ]!.y;
+      if (maos.ler(pose[PUNHO_E]!.y < nariz && pose[PUNHO_D]!.y < nariz, tMs)) gestos.push('maosParaCima');
+      return { presenca: presenca(cx, cfg), inclinacao: limitar(d / cfg.limiar), gestos };
+    },
+  };
+}
 
-      if (travadoLado) {
-        if (Math.abs(d) < cfg.zonaRetorno) travadoLado = false;
+function interpretadorMao(cfg: Config): Interpretador {
+  let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
+  let travadoLado = false;
+  const ambas = criarGatilho(cfg.permanenciaMaosMs);
+  return {
+    calibrar() {},
+    ler(pose, tMs) {
+      if (!pose) { lado = null; ambas.zerar(); return AUSENTE; }
+      const gestos: Gesto[] = [];
+      const { cx } = medir(pose);
+      const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
+      const dir = acima(PUNHO_D, OMBRO_D);
+      const esq = acima(PUNHO_E, OMBRO_E);
+
+      if (ambas.ler(dir && esq, tMs)) {
+        gestos.push('maosParaCima');
+        travadoLado = true; // baixar uma mão por vez depois do "saiba mais" não escolhe
+      }
+      if (!dir && !esq) travadoLado = false;
+
+      if (travadoLado || dir === esq) {
+        lado = null;
       } else {
-        const dir = d > cfg.limiar ? 'direita' : d < -cfg.limiar ? 'esquerda' : null;
-        if (!dir) lado = null;
-        else if (lado?.gesto !== dir) lado = { gesto: dir, desde: tMs };
+        const g = dir ? 'direita' : 'esquerda';
+        if (lado?.gesto !== g) lado = { gesto: g, desde: tMs };
         else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
-          gestos.push(dir);
+          gestos.push(g);
           travadoLado = true;
           lado = null;
         }
       }
-
-      const nariz = pose[NARIZ]!.y;
-      const maosAcima = pose[PUNHO_E]!.y < nariz && pose[PUNHO_D]!.y < nariz;
-      if (!maosAcima) {
-        maosDesde = null;
-        travadoMaos = false;
-      } else if (maosDesde === null) {
-        maosDesde = tMs;
-      } else if (!travadoMaos && tMs - maosDesde >= cfg.permanenciaMaosMs) {
-        gestos.push('maosParaCima');
-        travadoMaos = true;
-      }
-
-      return {
-        presenca: { presente: true, centralizado: Math.abs(cx - 0.5) < cfg.zonaCalibracao },
-        inclinacao,
-        gestos,
-      };
+      return { presenca: presenca(cx, cfg), inclinacao: 0, gestos };
     },
   };
+}
+
+function interpretadorCabeca(cfg: Config): Interpretador {
+  let ultimoRoll = 0;
+  let ultimoQueixo: number | null = null;
+  let rollCentro = 0;
+  let queixoCentro: number | null = null;
+  const lado = criarLado(cfg.limiarCabecaGraus, cfg.retornoCabecaGraus, cfg);
+  const queixo = criarGatilho(cfg.permanenciaMaosMs);
+  return {
+    calibrar() {
+      rollCentro = ultimoRoll;
+      queixoCentro = ultimoQueixo;
+    },
+    ler(pose, tMs) {
+      if (!pose) { lado.zerar(); queixo.zerar(); return AUSENTE; }
+      const gestos: Gesto[] = [];
+      const { cx } = medir(pose);
+      const oe = pose[ORELHA_E]!, od = pose[ORELHA_D]!, nariz = pose[NARIZ]!;
+      const dist = Math.max(Math.abs(oe.x - od.x), 1e-6);
+      // Orelha direita mais baixa que a esquerda = cabeça inclinada para a própria direita.
+      const roll = (Math.atan2(od.y - oe.y, dist) * 180) / Math.PI;
+      // Nariz subindo em relação às orelhas = queixo para cima.
+      const q = ((oe.y + od.y) / 2 - nariz.y) / dist;
+      ultimoRoll = roll;
+      ultimoQueixo = q;
+      if (queixoCentro === null) queixoCentro = q;
+
+      const d = roll - rollCentro;
+      const g = lado.ler(d, tMs);
+      if (g) gestos.push(g);
+      if (queixo.ler(q - queixoCentro > cfg.limiarQueixo, tMs)) gestos.push('maosParaCima');
+      return { presenca: presenca(cx, cfg), inclinacao: limitar(d / cfg.limiarCabecaGraus), gestos };
+    },
+  };
+}
+
+export function criarInterpretador(modo: ModoJogo = 'corpo', cfg: Config = CONFIG_GESTOS): Interpretador {
+  if (modo === 'mao') return interpretadorMao(cfg);
+  if (modo === 'cabeca') return interpretadorCabeca(cfg);
+  return interpretadorCorpo(cfg);
 }

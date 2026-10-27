@@ -56,3 +56,16 @@
 **Spec requirement:** FR-7, FR-8, AC-6.4.
 
 Não existe entidade de jogador nem de partida persistida (FR-1 "Must not"; Non-Goals).
+
+---
+
+### ModoJogo (configuração do notebook, adicionado v1.1.0)
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| match-do-saber:modo | `'corpo' \| 'mao' \| 'cabeca'` | chave do `localStorage`; ausente ou inválido = `corpo` | Modo de jogo escolhido pelo operador |
+
+**Indexes:** nenhum.
+**Relationships:** nenhuma; é configuração do estande, não dado de jogador.
+**Spec requirement:** FR-9, AC-9.4, AC-9.5.
+

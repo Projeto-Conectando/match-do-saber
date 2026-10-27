@@ -11,6 +11,7 @@
 - Pontuação: +1 por acerto; 0 por erro ou tempo esgotado.
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
+- (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
 - Todos os textos em português do Brasil.
 - Nada da câmera é gravado ou transmitido; nenhum cookie, rastreador ou analytics; o app publicado não contém credenciais.
 - Telas de referência: 1366×768 ou maior, sem cortar título ou descrição.
@@ -2140,6 +2141,738 @@ Faz o app instalável e offline (precache de app, notícias, imagens, WASM e mod
 
 ---
 
+## Phase 8 (added v1.1.0): Modos de jogo acessíveis
+
+**Implements:** FR-9, Story 9 | **Satisfies:** AC-9.1–AC-9.16 (lógica e UI; hardware na Fase 9)
+**Files:** `src/core/modos.ts`, `src/core/modos.test.ts`, `src/core/gestos.ts`, `src/core/gestos-modos.test.ts`, `src/app/useModoJogo.ts`, `src/app/useJogo.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.tsx`, `src/app/App.module.css`, `tests/e2e/modos.spec.ts`
+**Interfaces:** Consumes: `Presenca` (`src/core/partida.ts`); `Pose`, `Gesto`, `LeituraGesto`, `Interpretador`, `CONFIG_GESTOS`, `escolherJogador`, `criarInterpretador` (`src/core/gestos.ts`, Fase 4); `useJogo` (`src/app/useJogo.ts`, Fase 5 + revisões D1–D4); telas de `src/app/Telas.tsx`. Produces: de `src/core/modos.ts`: `ModoJogo`, `MODOS`, `MODO_PADRAO`, `MODO_ROTULO`, `DICA_GESTOS`, `DICA_SAIBA_MAIS`, `Armazenamento`, `lerModo(a: Armazenamento | null): ModoJogo`, `salvarModo(a: Armazenamento | null, modo: ModoJogo): void`; `criarInterpretador(modo?: ModoJogo, cfg?: typeof CONFIG_GESTOS): Interpretador`; `useModoJogo(podeAbrir: () => boolean)`; `useJogo(noticias, modo?, pausado?)`; `MenuModo`.
+
+Adiciona os modos Mão e Cabeça ao interpretador de gestos, que continua puro e usa o mesmo modelo de pose: punhos e ombros no modo Mão, orelhas e nariz no modo Cabeça. Também adiciona o menu "Modo de jogo" na tela de espera, com o modo guardado no notebook. O modo Corpo e todos os testes existentes ficam como estão.
+
+Decisões técnicas (inline, sem ADR novo):
+- **Mesmo modelo de pose para mão e cabeça:** a inclinação da cabeça é calculada pelas orelhas (landmarks 7 e 8), e o "queixo para cima" pela posição do nariz (0) em relação às orelhas. Isso evita um segundo modelo, como o Face Landmarker, mais download e mais custo de processamento.
+- **Lados anatômicos:** os landmarks 16 (punho direito) e 8 (orelha direita) são da própria direita do jogador e não dependem do espelhamento da imagem.
+- **Modo guardado no `localStorage`:** a chave é `match-do-saber:modo` e é o único valor persistido (FR-9 "Must not"). O acesso fica protegido por try/catch: se o navegador bloquear o armazenamento, o jogo usa o modo Corpo.
+
+### 8.1 Modos (núcleo)
+
+- [ ] Escrever `src/core/modos.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { DICA_GESTOS, MODO_PADRAO, MODOS, lerModo, salvarModo, type Armazenamento } from './modos';
+
+  function memoria(inicial: Record<string, string> = {}): Armazenamento & { dados: Record<string, string> } {
+    const dados = { ...inicial };
+    return { dados, getItem: (k) => dados[k] ?? null, setItem: (k, v) => { dados[k] = v; } };
+  }
+  const quebrado: Armazenamento = {
+    getItem: () => { throw new Error('bloqueado'); },
+    setItem: () => { throw new Error('bloqueado'); },
+  };
+
+  describe('modos de jogo', () => {
+    it('lista Corpo, Mão e Cabeça, com Corpo como padrão', () => {
+      expect(MODOS).toEqual(['corpo', 'mao', 'cabeca']);
+      expect(MODO_PADRAO).toBe('corpo');
+    });
+    it('AC-9.4: sem valor guardado, usa Corpo', () => {
+      expect(lerModo(memoria())).toBe('corpo');
+      expect(lerModo(null)).toBe('corpo');
+    });
+    it('AC-9.5: lê o modo guardado', () => {
+      const a = memoria();
+      salvarModo(a, 'cabeca');
+      expect(lerModo(a)).toBe('cabeca');
+    });
+    it('valor inválido ou armazenamento bloqueado: usa Corpo e não lança erro', () => {
+      expect(lerModo(memoria({ 'match-do-saber:modo': 'pe' }))).toBe('corpo');
+      expect(lerModo(quebrado)).toBe('corpo');
+      expect(() => salvarModo(quebrado, 'mao')).not.toThrow();
+    });
+    it('FR-9: guarda só a chave do modo', () => {
+      const a = memoria();
+      salvarModo(a, 'mao');
+      expect(a.dados).toEqual({ 'match-do-saber:modo': 'mao' });
+    });
+    it('AC-9.14: dicas de cada modo', () => {
+      expect(DICA_GESTOS.mao).toBe('Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais');
+      expect(DICA_GESTOS.cabeca).toBe('Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais');
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/modos.test.ts`. Esperado: FAIL (módulo inexistente).
+- [ ] Implementar `src/core/modos.ts`:
+  ```ts
+  export type ModoJogo = 'corpo' | 'mao' | 'cabeca';
+
+  export const MODOS: readonly ModoJogo[] = ['corpo', 'mao', 'cabeca'];
+  export const MODO_PADRAO: ModoJogo = 'corpo';
+
+  export const MODO_ROTULO: Record<ModoJogo, string> = { corpo: 'Corpo', mao: 'Mão', cabeca: 'Cabeça' };
+
+  export const DICA_GESTOS: Record<ModoJogo, string> = {
+    corpo: 'Direita: é verdade · Esquerda: é falsa · Duas mãos para cima: saiba mais',
+    mao: 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais',
+    cabeca: 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais',
+  };
+
+  export const DICA_SAIBA_MAIS: Record<ModoJogo, string> = {
+    corpo: '🙌 Saiba mais: levante as duas mãos (ou ↑)',
+    mao: '🙌 Saiba mais: levante as duas mãos (ou ↑)',
+    cabeca: 'Saiba mais: levante o queixo (ou ↑)',
+  };
+
+  export interface Armazenamento {
+    getItem(chave: string): string | null;
+    setItem(chave: string, valor: string): void;
+  }
+
+  const CHAVE = 'match-do-saber:modo';
+
+  export function lerModo(a: Armazenamento | null): ModoJogo {
+    try {
+      const v = a?.getItem(CHAVE);
+      return MODOS.includes(v as ModoJogo) ? (v as ModoJogo) : MODO_PADRAO;
+    } catch {
+      return MODO_PADRAO;
+    }
+  }
+
+  export function salvarModo(a: Armazenamento | null, modo: ModoJogo): void {
+    try {
+      a?.setItem(CHAVE, modo);
+    } catch {
+      // Armazenamento bloqueado: a escolha vale até o jogo ser fechado.
+    }
+  }
+  ```
+- [ ] Rodar `npx vitest run src/core/modos.test.ts`. Esperado: PASS.
+- [ ] Commit: `feat(modos): game mode list, labels and saved choice (Phase 8.1: Modos)`
+
+### 8.2 Interpretador para os modos Mão e Cabeça
+
+- [ ] Escrever `src/core/gestos-modos.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { criarInterpretador, type Pose } from './gestos';
+
+  /** Pose sintética em coordenadas cruas da câmera; cxJogador é o centro do ponto de vista do jogador. */
+  function base(cxJogador = 0.5): Pose {
+    const cx = 1 - cxJogador;
+    const p = Array.from({ length: 33 }, () => ({ x: cx, y: 0.8, visibility: 1 }));
+    p[0] = { x: cx, y: 0.33, visibility: 1 };          // nariz
+    p[7] = { x: cx + 0.05, y: 0.3, visibility: 1 };    // orelha esquerda
+    p[8] = { x: cx - 0.05, y: 0.3, visibility: 1 };    // orelha direita
+    p[11] = { x: cx + 0.1, y: 0.45, visibility: 1 };   // ombro esquerdo
+    p[12] = { x: cx - 0.1, y: 0.45, visibility: 1 };   // ombro direito
+    p[15] = { x: cx + 0.15, y: 0.7, visibility: 1 };   // punho esquerdo
+    p[16] = { x: cx - 0.15, y: 0.7, visibility: 1 };   // punho direito
+    return p;
+  }
+  function maos(o: { direita?: boolean; esquerda?: boolean }, cx = 0.5): Pose {
+    const p = base(cx);
+    if (o.direita) p[16] = { ...p[16]!, y: 0.3 };
+    if (o.esquerda) p[15] = { ...p[15]!, y: 0.3 };
+    return p;
+  }
+  /** rollGraus > 0 = cabeça inclinada para a própria direita; queixo > 0 = olhando para cima. */
+  function cabeca(rollGraus: number, queixo = 0, cx = 0.5): Pose {
+    const p = base(cx);
+    const dy = Math.tan((rollGraus * Math.PI) / 180) * 0.1;
+    p[7] = { ...p[7]!, y: 0.3 - dy / 2 };
+    p[8] = { ...p[8]!, y: 0.3 + dy / 2 };
+    p[0] = { ...p[0]!, y: 0.33 - queixo * 0.1 };
+    return p;
+  }
+  function seq(i: ReturnType<typeof criarInterpretador>, passos: [Pose | null, number][]) {
+    return passos.flatMap(([p, t]) => i.ler(p, t).gestos);
+  }
+
+  describe('modo Mão', () => {
+    it('presença pela parte de cima do corpo; card não inclina', () => {
+      const i = criarInterpretador('mao');
+      expect(i.ler(maos({}), 0)).toMatchObject({ presenca: { presente: true, centralizado: true }, inclinacao: 0 });
+      expect(i.ler(maos({}, 0.8), 10).presenca.centralizado).toBe(false);
+    });
+    it('AC-9.7: mão direita acima do ombro por 300 ms = "direita"; esquerda = "esquerda"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[maos({ direita: true }), 0], [maos({ direita: true }), 200]])).toEqual([]);
+      expect(seq(i, [[maos({ direita: true }), 300]])).toEqual(['direita']);
+      const j = criarInterpretador('mao');
+      expect(seq(j, [[maos({ esquerda: true }), 0], [maos({ esquerda: true }), 300]])).toEqual(['esquerda']);
+    });
+    it('AC-9.8: duas mãos por 500 ms = "maosParaCima", sem escolha; baixar uma mão por vez não escolhe', () => {
+      const i = criarInterpretador('mao');
+      const ambas = maos({ direita: true, esquerda: true });
+      expect(seq(i, [[ambas, 0], [ambas, 400]])).toEqual([]);
+      expect(seq(i, [[ambas, 500], [ambas, 1500]])).toEqual(['maosParaCima']);
+      expect(seq(i, [[maos({ esquerda: true }), 1600], [maos({ esquerda: true }), 2000]])).toEqual([]);
+      expect(seq(i, [[maos({}), 2100], [maos({ esquerda: true }), 2200], [maos({ esquerda: true }), 2500]])).toEqual(['esquerda']);
+    });
+    it('AC-9.9: exige baixar as mãos entre escolhas', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[maos({ direita: true }), 0], [maos({ direita: true }), 300]])).toEqual(['direita']);
+      expect(seq(i, [[maos({ direita: true }), 700], [maos({ direita: true }), 1500]])).toEqual([]);
+      expect(seq(i, [[maos({}), 1600], [maos({ direita: true }), 1700], [maos({ direita: true }), 2000]])).toEqual(['direita']);
+    });
+    it('perder a pessoa zera a contagem', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[maos({ direita: true }), 0], [null, 100], [maos({ direita: true }), 200], [maos({ direita: true }), 400]])).toEqual([]);
+    });
+  });
+
+  describe('modo Cabeça', () => {
+    it('AC-9.10: inclinar para a própria direita ~15° por 300 ms = "direita"; esquerda = "esquerda"', () => {
+      const i = criarInterpretador('cabeca');
+      i.ler(cabeca(0), 0);
+      i.calibrar();
+      expect(seq(i, [[cabeca(20), 100], [cabeca(20), 300]])).toEqual([]);
+      expect(seq(i, [[cabeca(20), 400]])).toEqual(['direita']);
+      const j = criarInterpretador('cabeca');
+      j.ler(cabeca(0), 0);
+      j.calibrar();
+      expect(seq(j, [[cabeca(-20), 100], [cabeca(-20), 400]])).toEqual(['esquerda']);
+    });
+    it('mede em relação à calibração', () => {
+      const i = criarInterpretador('cabeca');
+      i.ler(cabeca(10), 0);
+      i.calibrar();
+      expect(seq(i, [[cabeca(20), 100], [cabeca(20), 1000]])).toEqual([]);
+    });
+    it('AC-9.13: inclinação proporcional abaixo do limiar, sem escolha', () => {
+      const i = criarInterpretador('cabeca');
+      i.ler(cabeca(0), 0);
+      i.calibrar();
+      expect(i.ler(cabeca(7.5), 100).inclinacao).toBeCloseTo(0.5, 1);
+      expect(seq(i, [[cabeca(7.5), 1000]])).toEqual([]);
+    });
+    it('AC-9.12: exige voltar a cabeça ao centro entre escolhas', () => {
+      const i = criarInterpretador('cabeca');
+      i.ler(cabeca(0), 0);
+      i.calibrar();
+      expect(seq(i, [[cabeca(20), 100], [cabeca(20), 400]])).toEqual(['direita']);
+      expect(seq(i, [[cabeca(20), 800], [cabeca(20), 1500]])).toEqual([]);
+      expect(seq(i, [[cabeca(3), 1600], [cabeca(20), 1700], [cabeca(20), 2000]])).toEqual(['direita']);
+    });
+    it('AC-9.11: queixo para cima por 500 ms = "maosParaCima", uma vez por levantada, sem escolha', () => {
+      const i = criarInterpretador('cabeca');
+      i.ler(cabeca(0), 0);
+      i.calibrar();
+      expect(seq(i, [[cabeca(0, 0.3), 100], [cabeca(0, 0.3), 500]])).toEqual([]);
+      expect(seq(i, [[cabeca(0, 0.3), 600], [cabeca(0, 0.3), 2000]])).toEqual(['maosParaCima']);
+      expect(seq(i, [[cabeca(0), 2100], [cabeca(0, 0.3), 2200], [cabeca(0, 0.3), 2700]])).toEqual(['maosParaCima']);
+    });
+    it('sem calibração, usa a primeira leitura do queixo como referência', () => {
+      const i = criarInterpretador('cabeca');
+      expect(seq(i, [[cabeca(0), 0], [cabeca(0), 1000]])).toEqual([]);
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/gestos-modos.test.ts`. Esperado: FAIL, porque `criarInterpretador('mao')` ainda se comporta como o modo Corpo.
+- [ ] Substituir `src/core/gestos.ts`. O modo Corpo é o mesmo código de antes, agora em `interpretadorCorpo`:
+  ```ts
+  import type { ModoJogo } from './modos';
+  import type { Presenca } from './partida';
+
+  export interface Ponto { x: number; y: number; visibility?: number }
+  export type Pose = Ponto[];
+  /** 'maosParaCima' é o gesto de "saiba mais" do modo ativo (no modo Cabeça, queixo para cima). */
+  export type Gesto = 'direita' | 'esquerda' | 'maosParaCima';
+  export interface LeituraGesto { presenca: Presenca; inclinacao: number; gestos: Gesto[] }
+  export interface Interpretador { ler(pose: Pose | null, tMs: number): LeituraGesto; calibrar(): void }
+
+  export const CONFIG_GESTOS = {
+    limiar: 0.12,
+    zonaRetorno: 0.05,
+    zonaCalibracao: 0.1,
+    permanenciaLadoMs: 300,
+    permanenciaMaosMs: 500,
+    margemMaoOmbro: 0.05,
+    limiarCabecaGraus: 15,
+    retornoCabecaGraus: 6,
+    limiarQueixo: 0.25,
+  };
+  type Config = typeof CONFIG_GESTOS;
+
+  const NARIZ = 0, ORELHA_E = 7, ORELHA_D = 8, OMBRO_E = 11, OMBRO_D = 12, PUNHO_E = 15, PUNHO_D = 16;
+  const AUSENTE: LeituraGesto = { presenca: { presente: false, centralizado: false }, inclinacao: 0, gestos: [] };
+
+  /** Centro do tronco do ponto de vista do jogador (imagem espelhada) e largura dos ombros. */
+  function medir(p: Pose): { cx: number; largura: number } {
+    const a = p[OMBRO_E]!, b = p[OMBRO_D]!;
+    return { cx: 1 - (a.x + b.x) / 2, largura: Math.abs(a.x - b.x) };
+  }
+
+  function presenca(cx: number, cfg: Config): Presenca {
+    return { presente: true, centralizado: Math.abs(cx - 0.5) < cfg.zonaCalibracao };
+  }
+
+  const limitar = (v: number) => Math.max(-1, Math.min(1, v));
+
+  export function escolherJogador(poses: Pose[]): Pose | null {
+    let melhor: Pose | null = null;
+    let nota = -Infinity;
+    for (const p of poses) {
+      const { cx, largura } = medir(p);
+      const n = largura * (1 - Math.abs(cx - 0.5));
+      if (n > nota) { nota = n; melhor = p; }
+    }
+    return melhor;
+  }
+
+  /** Detecta um deslocamento lateral mantido por `permanenciaLadoMs`, com retorno obrigatório ao centro. */
+  function criarLado(limiar: number, retorno: number, cfg: Config) {
+    let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
+    let travado = false;
+    return {
+      zerar() { lado = null; },
+      ler(d: number, tMs: number): Gesto | null {
+        if (travado) {
+          if (Math.abs(d) < retorno) travado = false;
+          return null;
+        }
+        const dir = d > limiar ? 'direita' : d < -limiar ? 'esquerda' : null;
+        if (!dir) lado = null;
+        else if (lado?.gesto !== dir) lado = { gesto: dir, desde: tMs };
+        else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
+          travado = true;
+          lado = null;
+          return dir;
+        }
+        return null;
+      },
+    };
+  }
+
+  /** Dispara uma vez quando `ativo` fica verdadeiro por `ms`; rearma quando `ativo` volta a falso. */
+  function criarGatilho(ms: number) {
+    let desde: number | null = null;
+    let disparado = false;
+    return {
+      zerar() { desde = null; },
+      ler(ativo: boolean, tMs: number): boolean {
+        if (!ativo) { desde = null; disparado = false; return false; }
+        if (desde === null) { desde = tMs; return false; }
+        if (!disparado && tMs - desde >= ms) { disparado = true; return true; }
+        return false;
+      },
+    };
+  }
+
+  function interpretadorCorpo(cfg: Config): Interpretador {
+    let centro: number | null = null;
+    let ultimoCx = 0.5;
+    const lado = criarLado(cfg.limiar, cfg.zonaRetorno, cfg);
+    const maos = criarGatilho(cfg.permanenciaMaosMs);
+    return {
+      calibrar() { centro = ultimoCx; },
+      ler(pose, tMs) {
+        if (!pose) { lado.zerar(); maos.zerar(); return AUSENTE; }
+        const gestos: Gesto[] = [];
+        const { cx } = medir(pose);
+        ultimoCx = cx;
+        const d = cx - (centro ?? 0.5);
+        const g = lado.ler(d, tMs);
+        if (g) gestos.push(g);
+        const nariz = pose[NARIZ]!.y;
+        if (maos.ler(pose[PUNHO_E]!.y < nariz && pose[PUNHO_D]!.y < nariz, tMs)) gestos.push('maosParaCima');
+        return { presenca: presenca(cx, cfg), inclinacao: limitar(d / cfg.limiar), gestos };
+      },
+    };
+  }
+
+  function interpretadorMao(cfg: Config): Interpretador {
+    let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
+    let travadoLado = false;
+    const ambas = criarGatilho(cfg.permanenciaMaosMs);
+    return {
+      calibrar() {},
+      ler(pose, tMs) {
+        if (!pose) { lado = null; ambas.zerar(); return AUSENTE; }
+        const gestos: Gesto[] = [];
+        const { cx } = medir(pose);
+        const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
+        const dir = acima(PUNHO_D, OMBRO_D);
+        const esq = acima(PUNHO_E, OMBRO_E);
+
+        if (ambas.ler(dir && esq, tMs)) {
+          gestos.push('maosParaCima');
+          travadoLado = true; // baixar uma mão por vez depois do "saiba mais" não escolhe
+        }
+        if (!dir && !esq) travadoLado = false;
+
+        if (travadoLado || dir === esq) {
+          lado = null;
+        } else {
+          const g = dir ? 'direita' : 'esquerda';
+          if (lado?.gesto !== g) lado = { gesto: g, desde: tMs };
+          else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
+            gestos.push(g);
+            travadoLado = true;
+            lado = null;
+          }
+        }
+        return { presenca: presenca(cx, cfg), inclinacao: 0, gestos };
+      },
+    };
+  }
+
+  function interpretadorCabeca(cfg: Config): Interpretador {
+    let ultimoRoll = 0;
+    let ultimoQueixo: number | null = null;
+    let rollCentro = 0;
+    let queixoCentro: number | null = null;
+    const lado = criarLado(cfg.limiarCabecaGraus, cfg.retornoCabecaGraus, cfg);
+    const queixo = criarGatilho(cfg.permanenciaMaosMs);
+    return {
+      calibrar() {
+        rollCentro = ultimoRoll;
+        queixoCentro = ultimoQueixo;
+      },
+      ler(pose, tMs) {
+        if (!pose) { lado.zerar(); queixo.zerar(); return AUSENTE; }
+        const gestos: Gesto[] = [];
+        const { cx } = medir(pose);
+        const oe = pose[ORELHA_E]!, od = pose[ORELHA_D]!, nariz = pose[NARIZ]!;
+        const dist = Math.max(Math.abs(oe.x - od.x), 1e-6);
+        // Orelha direita mais baixa que a esquerda = cabeça inclinada para a própria direita.
+        const roll = (Math.atan2(od.y - oe.y, dist) * 180) / Math.PI;
+        // Nariz subindo em relação às orelhas = queixo para cima.
+        const q = ((oe.y + od.y) / 2 - nariz.y) / dist;
+        ultimoRoll = roll;
+        ultimoQueixo = q;
+        if (queixoCentro === null) queixoCentro = q;
+
+        const d = roll - rollCentro;
+        const g = lado.ler(d, tMs);
+        if (g) gestos.push(g);
+        if (queixo.ler(q - queixoCentro > cfg.limiarQueixo, tMs)) gestos.push('maosParaCima');
+        return { presenca: presenca(cx, cfg), inclinacao: limitar(d / cfg.limiarCabecaGraus), gestos };
+      },
+    };
+  }
+
+  export function criarInterpretador(modo: ModoJogo = 'corpo', cfg: Config = CONFIG_GESTOS): Interpretador {
+    if (modo === 'mao') return interpretadorMao(cfg);
+    if (modo === 'cabeca') return interpretadorCabeca(cfg);
+    return interpretadorCorpo(cfg);
+  }
+  ```
+- [ ] Rodar `npx vitest run src/core`. Esperado: PASS, incluindo todos os testes antigos de `gestos.test.ts`, que continuam usando `criarInterpretador()` no modo Corpo.
+- [ ] Commit: `feat(gestos): hand and head interpreters for accessible modes (Phase 8.2: Interpretador)`
+
+### 8.3 Menu "Modo de jogo" e telas
+
+- [ ] Acrescentar a `src/app/Telas.test.tsx`. Os imports novos são `fireEvent` de `@testing-library/react`, `vi` de `vitest` e `MenuModo`, `TelaCalibracao`. Acrescentar este bloco:
+  ```tsx
+  describe('modos de jogo (v1.1.0)', () => {
+    it('AC-9.1/AC-9.2: espera mostra o modo ativo e abre o menu', () => {
+      const abrir = vi.fn();
+      render(<TelaEspera semNoticias={false} camera="ativa" modo="mao" onAbrirMenu={abrir} />);
+      fireEvent.click(screen.getByRole('button', { name: '⚙ Modo de jogo: Mão' }));
+      expect(abrir).toHaveBeenCalledOnce();
+    });
+    it('AC-9.1: menu lista os três modos, com o ativo marcado', () => {
+      const escolher = vi.fn();
+      render(<MenuModo ativo="corpo" destacado={0} onEscolher={escolher} onFechar={() => {}} />);
+      const menu = screen.getByRole('dialog', { name: 'Modo de jogo' });
+      expect(menu).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Corpo \(padrão\)/ })).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.click(screen.getByRole('button', { name: /Cabeça/ }));
+      expect(escolher).toHaveBeenCalledWith('cabeca');
+    });
+    it.each([
+      ['mao', 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais'],
+      ['cabeca', 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais'],
+    ] as const)('AC-9.14: calibração e card mostram os gestos do modo %s', (modo, dica) => {
+      const { unmount } = render(<TelaCalibracao progresso={0} modo={modo} />);
+      expect(screen.getByText(dica)).toBeInTheDocument();
+      unmount();
+      render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} modo={modo} cardRef={{ current: null }} onArrastar={() => {}} />);
+      expect(screen.getByText(dica)).toBeInTheDocument();
+    });
+    it('AC-9.14: no modo Cabeça, a dica do saiba mais fala do queixo', () => {
+      render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} modo="cabeca" cardRef={{ current: null }} onArrastar={() => {}} />);
+      expect(screen.getByText('Saiba mais: levante o queixo (ou ↑)')).toBeInTheDocument();
+    });
+  });
+  ```
+- [ ] Escrever `tests/e2e/modos.spec.ts`:
+  ```ts
+  import { expect, test, type Page } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+
+  async function abrirSemCamera(page: Page) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto('/');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  }
+
+  test('menu pelo teclado: abrir, cancelar, escolher, lembrar e bloquear durante a partida (AC-9.1–9.6, AC-9.14)', async ({ page }) => {
+    await abrirSemCamera(page);
+    const botao = (nome: string) => page.getByRole('button', { name: `⚙ Modo de jogo: ${nome}` });
+    const menu = page.getByRole('dialog', { name: 'Modo de jogo' });
+    await expect(botao('Corpo')).toBeVisible();                     // AC-9.4
+
+    await page.keyboard.press('m');
+    await expect(menu).toBeVisible();                               // AC-9.1
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();                                // AC-9.3
+    await expect(botao('Corpo')).toBeVisible();
+
+    await page.keyboard.press('m');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(menu).toBeHidden();
+    await expect(botao('Mão')).toBeVisible();                       // AC-9.2
+    await expect(page.locator('article')).toHaveCount(0);           // Enter do menu não inicia partida
+
+    await page.reload();
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await expect(botao('Mão')).toBeVisible();                       // AC-9.5
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('article')).toBeVisible();
+    await expect(page.getByText('Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais')).toBeVisible(); // AC-9.14
+    await page.keyboard.press('m');
+    await expect(menu).toHaveCount(0);                              // AC-9.6
+  });
+
+  test('menu pelo mouse escolhe Cabeça (AC-9.2)', async ({ page }) => {
+    await abrirSemCamera(page);
+    await page.getByRole('button', { name: '⚙ Modo de jogo: Corpo' }).click();
+    const menu = page.getByRole('dialog', { name: 'Modo de jogo' });
+    await menu.getByRole('button', { name: /Cabeça/ }).click();
+    await expect(menu).toBeHidden();
+    await expect(page.getByRole('button', { name: '⚙ Modo de jogo: Cabeça' })).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Saiba mais: levante o queixo (ou ↑)')).toBeVisible();
+  });
+
+  test('AC-9.16: setas funcionam no modo Mão', async ({ page }) => {
+    await abrirSemCamera(page);
+    await page.keyboard.press('m');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+  });
+  ```
+- [ ] Rodar `npx vitest run src/app` e `npm run fixture && npx vite build && npx playwright test tests/e2e/modos.spec.ts`. Esperado: FAIL. (`npm run e2e` para no `tsc` enquanto as props novas não existem.)
+- [ ] Criar `src/app/useModoJogo.ts`:
+  ```ts
+  import { useCallback, useEffect, useMemo, useState } from 'react';
+  import { MODOS, lerModo, salvarModo, type Armazenamento, type ModoJogo } from '../core/modos';
+
+  function armazenamentoDoNavegador(): Armazenamento | null {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Modo de jogo do estande (FR-9). `podeAbrir` diz se o jogo está na tela de espera. */
+  export function useModoJogo(podeAbrir: () => boolean) {
+    const armazenamento = useMemo(armazenamentoDoNavegador, []);
+    const [modo, setModo] = useState<ModoJogo>(() => lerModo(armazenamento));
+    const [menu, setMenu] = useState({ aberto: false, destacado: 0 });
+
+    const fechar = useCallback(() => setMenu({ aberto: false, destacado: 0 }), []);
+    const abrir = useCallback(() => {
+      if (podeAbrir()) setMenu({ aberto: true, destacado: MODOS.indexOf(modo) });
+    }, [podeAbrir, modo]);
+    const escolher = useCallback((m: ModoJogo) => {
+      setModo(m);
+      salvarModo(armazenamento, m);
+      setMenu({ aberto: false, destacado: 0 });
+    }, [armazenamento]);
+
+    // Captura no window: com o menu aberto, nenhuma tecla chega ao jogo (Enter não inicia partida).
+    useEffect(() => {
+      const tecla = (e: KeyboardEvent) => {
+        const m = e.key === 'm' || e.key === 'M';
+        if (!menu.aberto) {
+          if (m && podeAbrir()) { e.preventDefault(); abrir(); }
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (m || e.key === 'Escape') fechar();
+        else if (e.key === 'ArrowDown') setMenu((s) => ({ ...s, destacado: (s.destacado + 1) % MODOS.length }));
+        else if (e.key === 'ArrowUp') setMenu((s) => ({ ...s, destacado: (s.destacado + MODOS.length - 1) % MODOS.length }));
+        else if (e.key === 'Enter') escolher(MODOS[menu.destacado]!);
+      };
+      window.addEventListener('keydown', tecla, { capture: true });
+      return () => window.removeEventListener('keydown', tecla, { capture: true });
+    }, [menu, podeAbrir, abrir, fechar, escolher]);
+
+    return { modo, menuAberto: menu.aberto, destacado: menu.destacado, abrir, fechar, escolher };
+  }
+  ```
+- [ ] Alterar `src/app/useJogo.ts` em três pontos, mantendo o resto do arquivo como está:
+  1. A assinatura e o interpretador por modo:
+     ```ts
+     import type { ModoJogo } from '../core/modos';
+     // ...
+     export function useJogo(noticias: Noticia[], modo: ModoJogo = 'corpo', pausado = false) {
+       // ...(estado, refs e camera inalterados)...
+       const interp = useRef(criarInterpretador(modo));
+       const pausadoRef = useRef(pausado);
+       pausadoRef.current = pausado;
+
+       // O modo só muda na tela de espera (FR-9), então trocar o interpretador aqui não afeta uma partida.
+       useEffect(() => {
+         interp.current = criarInterpretador(modo);
+       }, [modo]);
+     ```
+  2. No laço por quadro, enquanto o menu estiver aberto, a câmera não gera presença nem gestos. Isso impede que alguém entrando no quadro dispare a calibração com o menu aberto:
+     ```ts
+     if (r && video && video.readyState >= 2) {
+       const pose = escolherJogador(r.detectar(video, agora));
+       poseRef.current = pose;
+       const leitura = interp.current.ler(pose, agora);
+       inclinacaoRef.current = pausadoRef.current ? 0 : leitura.inclinacao;
+       despachar({ tipo: 'tick', dtMs, presenca: pausadoRef.current ? null : leitura.presenca });
+       if (!pausadoRef.current) for (const g of leitura.gestos) despachar(EVENTO_DO_GESTO[g]);
+     } else {
+     ```
+  3. Nenhuma outra mudança: o listener de teclado do jogo não precisa saber do menu, porque o `useModoJogo` intercepta as teclas antes, na fase de captura.
+- [ ] Alterar `src/app/Telas.tsx`:
+  - Imports: acrescentar `import { DICA_GESTOS, DICA_SAIBA_MAIS, MODO_ROTULO, MODOS, type ModoJogo } from '../core/modos';`.
+  - Substituir `TelaEspera` e `TelaCalibracao`, e acrescentar `MenuModo`:
+  ```tsx
+  export function TelaEspera({ semNoticias, camera, modo = 'corpo', onAbrirMenu = () => {} }: {
+    semNoticias: boolean;
+    camera: StatusCamera;
+    modo?: ModoJogo;
+    onAbrirMenu?: () => void;
+  }) {
+    return (
+      <main className={s.centro}>
+        <h1 className={s.logo}>Match do Saber</h1>
+        {semNoticias ? (
+          <p className={s.aviso}>Nenhuma notícia publicada</p>
+        ) : camera === 'negada' || camera === 'indisponivel' ? (
+          <p className={s.aviso}>Câmera desativada — jogue pelas setas (Enter para começar)</p>
+        ) : (
+          <p className={s.chamada}>Chegue mais perto e fique de frente para a câmera para jogar</p>
+        )}
+        <button
+          type="button"
+          className={s.botaoModo}
+          onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}
+        >
+          {`⚙ Modo de jogo: ${MODO_ROTULO[modo]}`}
+        </button>
+      </main>
+    );
+  }
+
+  export function TelaCalibracao({ progresso, modo = 'corpo' }: { progresso: number; modo?: ModoJogo }) {
+    return (
+      <main className={s.centro}>
+        <p className={s.chamada}>Fique no centro</p>
+        <div className={s.barra}><div style={{ width: `${Math.round(progresso * 100)}%` }} /></div>
+        <p className={s.dica}>{DICA_GESTOS[modo]}</p>
+      </main>
+    );
+  }
+
+  export function MenuModo({ ativo, destacado, onEscolher, onFechar }: {
+    ativo: ModoJogo;
+    destacado: number;
+    onEscolher: (modo: ModoJogo) => void;
+    onFechar: () => void;
+  }) {
+    return (
+      <div className={s.sobreposicao} role="dialog" aria-modal="true" aria-label="Modo de jogo">
+        <div className={s.menu}>
+          <h2>Modo de jogo</h2>
+          <ul>
+            {MODOS.map((m, i) => (
+              <li key={m}>
+                <button
+                  type="button"
+                  className={i === destacado ? s.destacado : undefined}
+                  aria-pressed={m === ativo}
+                  onClick={() => onEscolher(m)}
+                >
+                  {`${m === ativo ? '◉' : '○'} ${MODO_ROTULO[m]}${m === 'corpo' ? ' (padrão)' : ''}`}
+                </button>
+                <p className={s.dica}>{DICA_GESTOS[m]}</p>
+              </li>
+            ))}
+          </ul>
+          <p className={s.dica}>↑/↓ e Enter para escolher · Esc para fechar</p>
+          <button type="button" onClick={onFechar}>Fechar</button>
+        </div>
+      </div>
+    );
+  }
+  ```
+  - Em `TelaCard`, acrescentar a prop `modo = 'corpo'` (`modo?: ModoJogo` no tipo). Trocar a linha da dica dentro do card por `<p className={s.dica}>{DICA_SAIBA_MAIS[modo]}</p>`. Logo depois de `<div className={s.lado}>Verdade ✓</div>`, acrescentar:
+  ```tsx
+  {modo !== 'corpo' && <p className={s.dicaModo}>{DICA_GESTOS[modo]}</p>}
+  ```
+  A dica do modo fica fora do card, para não reduzir o espaço do texto da notícia (FR-4).
+- [ ] Alterar `src/app/App.tsx`, função `Jogo`:
+  ```tsx
+  import { useModoJogo } from './useModoJogo';
+  import { MenuModo, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+  import type { Estado } from '../core/partida';
+  // ...
+  function Jogo({ noticias }: { noticias: Noticia[] }) {
+    const telaRef = useRef<Estado['tela']>('espera');
+    const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
+    const modoJogo = useModoJogo(podeAbrirMenu);
+    const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, modoJogo.modo, modoJogo.menuAberto);
+    telaRef.current = estado.tela;
+    // ...(cardRef, cardSaindoRef e laço de inclinação inalterados)...
+  ```
+  E nas telas: `TelaEspera` recebe `modo={modoJogo.modo} onAbrirMenu={modoJogo.abrir}`; `TelaCalibracao` recebe `modo={modoJogo.modo}`; os dois `TelaCard` recebem `modo={modoJogo.modo}`. Logo antes de `<CameraPreview …/>`:
+  ```tsx
+  {modoJogo.menuAberto && (
+    <MenuModo ativo={modoJogo.modo} destacado={modoJogo.destacado} onEscolher={modoJogo.escolher} onFechar={modoJogo.fechar} />
+  )}
+  ```
+  (`useCallback` entra no import de `react`.)
+- [ ] Acrescentar a `src/app/App.module.css`:
+  ```css
+  .botaoModo { margin-top: 1.5rem; font-size: 1.1rem; padding: 0.6rem 1.25rem; border-radius: 2rem; border: 2px solid #fff; background: transparent; color: #fff; cursor: pointer; }
+  .menu { background: #2a1850; padding: 2rem; border-radius: 1.5rem; font-size: 1.1rem; font-weight: 400; max-width: 40rem; text-align: left; }
+  .menu h2 { margin-top: 0; font-size: 1.75rem; }
+  .menu ul { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.75rem; }
+  .menu button { font-size: 1.25rem; padding: 0.5rem 1rem; border-radius: 0.75rem; border: 2px solid transparent; background: #3a2470; color: #fff; cursor: pointer; }
+  .menu .destacado { border-color: #7cff6b; }
+  .dicaModo { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); margin: 0; background: #3a2470; padding: 0.5rem 1.25rem; border-radius: 2rem; font-size: 1.1rem; white-space: nowrap; }
+  ```
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS. São os 80 testes anteriores, mais os novos de `modos`, `gestos-modos` e `Telas`, e 15 testes de ponta a ponta (12 + 3).
+- [ ] Commit: `feat(app): game mode menu with accessible hand and head modes (Phase 8.3: Menu e telas)`
+
+---
+
+## Phase 9 (added v1.1.0): Verificação dos modos no hardware
+
+**Implements:** FR-9 | **Satisfies:** AC-9.7–AC-9.13, AC-9.15 (hardware)
+
+- [ ] No notebook real, com webcam, escolher o modo Mão e jogar 2 partidas sentado, a ~1–1,5 m:
+  - Mão direita, mão esquerda e as duas mãos, conferindo também o bloqueio até baixar as mãos.
+  - Conferir que levantar as duas mãos com um pequeno atraso entre elas não registra uma escolha. Se registrar, aumentar `permanenciaLadoMs` só para o modo Mão.
+- [ ] Escolher o modo Cabeça e jogar 2 partidas sentado:
+  - Inclinar a cabeça para a direita e para a esquerda, levantar o queixo, e conferir o retorno ao centro entre escolhas e a inclinação do card.
+  - Ajustar `limiarCabecaGraus`, `retornoCabecaGraus` e `limiarQueixo` se for preciso, e rodar de novo `npx vitest run src/core/gestos-modos.test.ts`.
+- [ ] Teste com pelo menos uma pessoa com baixa mobilidade, se possível. Anotar no relatório da Fase 7 o que funcionou e o que precisou de ajuste.
+- [ ] Desempenho em DevTools nos modos Mão e Cabeça: gesto confirmado em até 1 s e pelo menos 15 quadros por segundo.
+- [ ] Fechar e reabrir o jogo sem internet e conferir que o modo escolhido continua ativo (AC-9.5).
+- [ ] Com a câmera ligada e uma pessoa no quadro, abrir o menu "Modo de jogo" na tela de espera e conferir que a calibração não começa enquanto o menu está aberto (FR-9).
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -2167,6 +2900,15 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
   | FR-8 | 6 |
+  | FR-9 (v1.1.0) | 8, 9 |
 
 - **ACs:** todas as 38 (AC-1.1–1.6, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.6, 6.1–6.4, 7.1–7.5, 8.1–8.3) aparecem num `Satisfies`. AC-1.5, 2.1–2.4, 2.6, 3.1 e 7.1 têm teste automatizado da lógica e verificação manual com hardware ou planilha real na Fase 7.
 - **Limitação conhecida:** o cenário de erro "jogo aberto offline antes de qualquer abertura online" só pode mostrar a mensagem da spec quando o shell do app já está em cache. Na primeiríssima abertura sem rede, o navegador mostra a própria página de erro, porque não há código do app para rodar. O app cobre o caso parcial (shell presente, catálogo ausente ou inválido).
+
+## Plan Changelog
+
+| Version | Phase | Change |
+|---------|-------|--------|
+| 1.0.0 | 0–7 | Plano inicial (implementado e mergeado em 2026-10-27, revisão SPEC-ALIGNED) |
+| 1.1.0 | 8 | Adicionada: modos de jogo acessíveis (FR-9, AC-9.1–9.16) |
+| 1.1.0 | 9 | Adicionada: verificação dos modos Mão e Cabeça no hardware |

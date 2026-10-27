@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { Noticia } from '../core/types';
-import { TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { MenuModo, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 
 const noticia: Noticia = {
   id: 'n1', titulo: 'Título X', descricao: 'Descrição Y', saibaMais: 'Mais Z', imagem: 'content/img/n1.webp',
@@ -69,5 +69,37 @@ describe('telas', () => {
     expect(screen.getByText('7 de 10')).toBeInTheDocument();
     expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
     expect(screen.getByText('Conferir a data')).toBeInTheDocument();
+  });
+});
+
+describe('modos de jogo (v1.1.0)', () => {
+  it('AC-9.1/AC-9.2: espera mostra o modo ativo e abre o menu', () => {
+    const abrir = vi.fn();
+    render(<TelaEspera semNoticias={false} camera="ativa" modo="mao" onAbrirMenu={abrir} />);
+    fireEvent.click(screen.getByRole('button', { name: '⚙ Modo de jogo: Mão' }));
+    expect(abrir).toHaveBeenCalledOnce();
+  });
+  it('AC-9.1: menu lista os três modos, com o ativo marcado', () => {
+    const escolher = vi.fn();
+    render(<MenuModo ativo="corpo" destacado={0} onEscolher={escolher} onFechar={() => {}} />);
+    const menu = screen.getByRole('dialog', { name: 'Modo de jogo' });
+    expect(menu).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Corpo \(padrão\)/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /Cabeça/ }));
+    expect(escolher).toHaveBeenCalledWith('cabeca');
+  });
+  it.each([
+    ['mao', 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais'],
+    ['cabeca', 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais'],
+  ] as const)('AC-9.14: calibração e card mostram os gestos do modo %s', (modo, dica) => {
+    const { unmount } = render(<TelaCalibracao progresso={0} modo={modo} />);
+    expect(screen.getByText(dica)).toBeInTheDocument();
+    unmount();
+    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} modo={modo} cardRef={{ current: null }} onArrastar={() => {}} />);
+    expect(screen.getByText(dica)).toBeInTheDocument();
+  });
+  it('AC-9.14: no modo Cabeça, a dica do saiba mais fala do queixo', () => {
+    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} modo="cabeca" cardRef={{ current: null }} onArrastar={() => {}} />);
+    expect(screen.getByText('Saiba mais: levante o queixo (ou ↑)')).toBeInTheDocument();
   });
 });

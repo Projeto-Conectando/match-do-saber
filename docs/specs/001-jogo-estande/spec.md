@@ -1,9 +1,20 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
+**Version:** 1.1.0
 **Created:** 2026-10-26
+**Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
 **Origem:** [prd.md](prd.md) · ADRs: [frontend-stack](../../adr/001-frontend-stack.md), [motion-input](../../adr/001-motion-input.md), [content-pipeline](../../adr/001-content-pipeline.md)
+
+---
+
+## Changelog
+
+| Version | Date | Change |
+|---------|------|--------|
+| 1.0.0 | 2026-10-26 | Spec inicial aprovada |
+| 1.1.0 | 2026-10-27 | Adicionados Story 9 e FR-9: menu "Modo de jogo" com modos acessíveis Mão e Cabeça (Corpo continua padrão); FR-2 passa a ser o modo Corpo |
 
 ---
 
@@ -19,10 +30,11 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - O jogo pode ser instalado no notebook e aberto por um ícone, como um aplicativo.
 - Uma pessoa não programadora publica ou altera notícias sem ajuda técnica, e só notícias aprovadas, com fonte e revisor, chegam ao jogo.
 - Nenhuma imagem da câmera e nenhum dado de jogador sai do notebook ou fica salvo.
+- Jogadores com baixa mobilidade completam uma partida sem tocar no notebook, usando o modo Mão (levantar uma mão) ou o modo Cabeça (inclinar a cabeça), escolhido pelo operador.
 
 ## Non-Goals
 
-- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo.
+- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo. (O único valor guardado no notebook é o modo de jogo escolhido pelo operador, que é configuração do estande, não dado de jogador.)
 - Modo para celular individual ou para sala de aula.
 - Multiplayer ou várias pessoas jogando ao mesmo tempo.
 - Painel administrativo próprio: a planilha de conteúdo é o painel.
@@ -30,7 +42,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 ## Users and Context
 
-**Primary users:** jogadores, que são estudantes do ensino médio e jovens adultos (muitos menores de idade) jogando um por vez num estande de evento.
+**Primary users:** jogadores, que são estudantes do ensino médio e jovens adultos (muitos menores de idade) jogando um por vez num estande de evento. Inclui jogadores com baixa mobilidade, que podem jogar sentados (por exemplo, em cadeira de rodas) e movimentar só um braço ou só a cabeça.
 **Secondary users:**
 - Operador do estande: liga o notebook, abre o jogo e intervém pelo teclado se a detecção de movimento falhar.
 - Equipe de conteúdo (não programadora): cadastra, revisa e publica as notícias numa planilha on-line. Tem acesso de leitura ao repositório para ver o resumo de cada publicação.
@@ -150,6 +162,31 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-8.2** Given o navegador do notebook oferece instalação When o operador instala o jogo Then ele abre por um ícone, em janela própria e em tela cheia, sem barra de endereço.
 - [ ] **AC-8.3** Given o jogo está aberto sem internet When o operador recarrega a página Then o jogo volta a abrir normalmente, sem tela de erro de conexão.
 
+### Story 9: Escolher um modo de jogo acessível (adicionado v1.1.0)
+
+**As a** operador do estande
+**I want** escolher entre os modos Corpo, Mão e Cabeça
+**So that** jogadores com baixa mobilidade também consigam jogar sem tocar no notebook
+
+**Acceptance criteria:**
+
+- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica no botão "⚙ Modo de jogo") Then abre o menu "Modo de jogo" com as opções Corpo, Mão e Cabeça, com a opção ativa marcada.
+- [ ] **AC-9.2** Given o menu "Modo de jogo" está aberto When o operador escolhe uma opção (↑/↓ e Enter, ou clique) Then o menu fecha, a tela de espera mostra "⚙ Modo de jogo: <nome do modo>" e as próximas partidas usam esse modo.
+- [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc ou M Then o menu fecha sem mudar o modo.
+- [ ] **AC-9.4** Given nenhum modo foi escolhido antes neste notebook When o jogo é aberto Then o modo ativo é Corpo.
+- [ ] **AC-9.5** Given o operador escolheu um modo When o jogo é fechado e reaberto, inclusive sem internet Then o mesmo modo continua ativo.
+- [ ] **AC-9.6** Given o jogo não está na tela de espera When o operador pressiona M Then nada acontece: o modo só muda entre partidas.
+- [ ] **AC-9.7** Given o modo Mão e um card na tela When o jogador mantém a **própria mão direita** acima do ombro por ~300 ms Then o card é registrado como "match" e sai pela direita; com a **mão esquerda**, como "descarte" e sai pela esquerda.
+- [ ] **AC-9.8** Given o modo Mão e um card na tela When o jogador mantém as duas mãos acima dos ombros por ~500 ms Then o "saiba mais" abre (ou fecha, se já estiver aberto) e nenhuma escolha é registrada.
+- [ ] **AC-9.9** Given o modo Mão e o jogador acabou de fazer uma escolha When o próximo card aparece com a mão ainda levantada Then nenhuma nova escolha é aceita até ele baixar as duas mãos.
+- [ ] **AC-9.10** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça para o **próprio lado direito** (~15° em relação à posição registrada na calibração) e mantém por ~300 ms Then o card é registrado como "match" e sai pela direita; para o lado esquerdo, como "descarte" e sai pela esquerda.
+- [ ] **AC-9.11** Given o modo Cabeça e um card na tela When o jogador levanta o queixo (olha para cima) e mantém por ~500 ms Then o "saiba mais" abre (ou fecha, se já estiver aberto) e nenhuma escolha é registrada.
+- [ ] **AC-9.12** Given o modo Cabeça e o jogador acabou de fazer uma escolha When o próximo card aparece com a cabeça ainda inclinada Then nenhuma nova escolha é aceita até ele voltar a cabeça ao centro.
+- [ ] **AC-9.13** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça sem atingir o limiar Then o card inclina na mesma direção, proporcionalmente, e nenhuma escolha é registrada.
+- [ ] **AC-9.14** Given o modo Mão ou Cabeça When a tela de calibração ou um card aparece Then as instruções mostram os gestos do modo ativo: Mão — "Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais"; Cabeça — "Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais".
+- [ ] **AC-9.15** Given o modo Mão ou Cabeça e um jogador sentado diante da câmera, com ombros e rosto visíveis When ele fica no centro por 2 s Then a calibração conclui e a partida começa.
+- [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
+
 ## Functional Requirements
 
 ### FR-1: Fluxo de estados da partida
@@ -166,7 +203,9 @@ O jogo passa por estes estados: espera → calibração → card → (saiba mais
 - Guardar qualquer informação da partida depois de uma nova partida começar ou de o jogo voltar à tela de espera.
 - Aceitar uma escolha durante o feedback, o resumo ou a calibração.
 
-### FR-2: Entrada por movimento do corpo
+### FR-2: Entrada por movimento do corpo (modo Corpo)
+
+Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 
 **Must:**
 - Reconhecer três gestos: tronco deslocado para a própria direita (match), para a própria esquerda (descarte) e dois punhos acima do nariz (saiba mais), com os tempos de permanência de AC-2.1, AC-2.2 e AC-3.1.
@@ -232,11 +271,28 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Funcionar sem internet, com app, notícias, imagens e detecção de movimento, depois de uma abertura online.
 - Atualizar sozinho para a versão publicada mais recente quando aberto com internet.
 
+### FR-9: Modos de jogo acessíveis (adicionado v1.1.0)
+
+**Must:**
+- Oferecer, na tela de espera, o menu "Modo de jogo" (tecla M ou botão "⚙ Modo de jogo") com três modos: Corpo (padrão, FR-2), Mão e Cabeça.
+- Mostrar o modo ativo na tela de espera ("⚙ Modo de jogo: <nome>").
+- Guardar o modo escolhido no próprio notebook e reaplicá-lo ao reabrir o jogo, inclusive offline; sem valor guardado, ou com valor inválido, usar Corpo.
+- Modo Mão: própria mão direita acima do ombro (~300 ms) = match; mão esquerda = descarte; as duas mãos acima dos ombros (~500 ms) = saiba mais; exigir baixar as mãos entre duas escolhas.
+- Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; inclinar o card proporcionalmente à inclinação da cabeça.
+- Nos modos Mão e Cabeça, detectar presença e centralização pela parte de cima do corpo (ombros e rosto), para que um jogador sentado consiga calibrar.
+- Mostrar nas instruções da calibração e do card os gestos do modo ativo (AC-9.14).
+- Manter, em todos os modos, a entrada alternativa (FR-3), os tempos (FR-1), a pontuação e o sorteio (FR-5) e a seleção da pessoa mais central e maior no quadro (FR-2).
+
+**Must not:**
+- Trocar o modo durante uma partida.
+- Guardar no notebook qualquer coisa além do modo de jogo escolhido.
+- Usar outra fonte de imagem além da câmera já autorizada, nem enviar imagens para fora do notebook.
+
 ## Non-Functional Requirements
 
 ### Performance
 
-- O gesto é confirmado em até 1 s depois de o jogador atingir a posição (já contando o tempo de permanência), num notebook comum com webcam de 720p.
+- O gesto é confirmado em até 1 s depois de o jogador atingir a posição (já contando o tempo de permanência), num notebook comum com webcam de 720p, em qualquer modo de jogo.
 - A prévia da câmera e a inclinação do card atualizam a pelo menos 15 quadros por segundo nesse notebook.
 - Com o conteúdo já em cache, o jogo vai do clique no ícone à tela de espera em até 5 s.
 - A transição de um card para o próximo (depois do feedback) leva menos de 300 ms, sem imagem carregando visivelmente.
@@ -269,6 +325,8 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 | Planilha inacessível na publicação | A publicação falha com mensagem no resumo; o jogo publicado continua com o conteúdo anterior (AC-7.5). |
 | Jogo aberto offline antes de qualquer abertura online | Tela "Conecte à internet uma vez para baixar o jogo". |
 | Jogo offline com versão antiga | Joga normalmente com o conteúdo em cache; atualiza na próxima abertura online. |
+| Modo guardado ausente, inválido ou armazenamento do navegador indisponível | O jogo abre no modo Corpo; o menu continua funcionando, e a escolha vale até o jogo ser fechado. |
+| No modo Mão ou Cabeça, o jogador não consegue fazer o gesto | O operador troca o modo entre partidas, ou joga pelas setas (FR-3). |
 
 ## Open Questions
 
@@ -280,11 +338,19 @@ Nenhuma pendente. Decisões que o PRD não fixava, confirmadas pela responsável
 - Linhas com `id` duplicado são descartadas (FR-7).
 - A meta de 8 h de operação contínua (Reliability).
 
+Decisões da v1.1.0, confirmadas pela responsável pelo projeto em 2026-10-27:
+- Mão e Cabeça são dois modos separados, além de Corpo (padrão).
+- Modo Mão: mão direita = match, esquerda = descarte, as duas = saiba mais.
+- Modo Cabeça: inclinar para direita/esquerda; levantar o queixo = saiba mais.
+- O operador escolhe o modo, e a escolha vale até ser trocada.
+- Os limiares (~15° de inclinação, "acima do ombro") e os tempos de permanência são pontos de partida, ajustados no teste com pessoas reais (Fase 7).
+
 ## Out of Scope (Future Considerations)
 
 - Ranking (do dia ou on-line), apelidos e contas.
 - Modo celular individual e modo sala de aula.
-- Gestos de mão/dedo.
+- Gestos de dedo (por exemplo, joinha ou mão aberta).
+- Ajuste de sensibilidade dos gestos pelo menu, ou modos além de Corpo, Mão e Cabeça.
 - Relatório de validação escrito de volta na planilha.
 - Configuração editável de número de cards e tempos pela planilha.
 - Telemetria e estatísticas de uso.
