@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseCatalogo } from '../core/catalogo';
-import { TEMPOS, pontos, tecnicasDaPartida } from '../core/partida';
+import { TEMPOS, pontos, tecnicasDaPartida, type Estado } from '../core/partida';
 import type { Noticia } from '../core/types';
 import { CameraPreview } from './CameraPreview';
-import { TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { MenuModo, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 import { useJogo } from './useJogo';
+import { useModoJogo } from './useModoJogo';
 import s from './App.module.css';
 
 export function App() {
@@ -27,7 +28,11 @@ export function App() {
 }
 
 function Jogo({ noticias }: { noticias: Noticia[] }) {
-  const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias);
+  const telaRef = useRef<Estado['tela']>('espera');
+  const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
+  const modoJogo = useModoJogo(podeAbrirMenu);
+  const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, modoJogo.modo, modoJogo.menuAberto);
+  telaRef.current = estado.tela;
   const cardRef = useRef<HTMLElement>(null);
   const cardSaindoRef = useRef<HTMLElement>(null); // fora do laço de inclinação
 
@@ -46,10 +51,10 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
   let tela;
   switch (estado.tela) {
     case 'espera':
-      tela = <TelaEspera semNoticias={noticias.length === 0} camera={camera} />;
+      tela = <TelaEspera semNoticias={noticias.length === 0} camera={camera} modo={modoJogo.modo} onAbrirMenu={modoJogo.abrir} />;
       break;
     case 'calibracao':
-      tela = <TelaCalibracao progresso={estado.centradoMs / TEMPOS.calibracaoMs} />;
+      tela = <TelaCalibracao progresso={estado.centradoMs / TEMPOS.calibracaoMs} modo={modoJogo.modo} />;
       break;
     case 'card':
       tela = (
@@ -60,6 +65,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           saibaMais={estado.saibaMais}
           ausente={estado.ausenteMs !== null}
           pontos={pontos(estado.partida)}
+          modo={modoJogo.modo}
           cardRef={cardRef}
           onArrastar={(lado) => despachar({ tipo: 'escolha', resposta: lado === 'direita' ? 'verdadeira' : 'falsa' })}
         />
@@ -77,6 +83,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           saibaMais={false}
           ausente={false}
           pontos={pontos(estado.partida)}
+          modo={modoJogo.modo}
           saida={estado.resposta === 'verdadeira' ? 'direita' : 'esquerda'}
           cardRef={cardSaindoRef}
           onArrastar={() => {}}
@@ -96,6 +103,9 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       {tela}
       {camera === 'indisponivel' && estado.tela !== 'espera' && (
         <p className={s.faixa}>Câmera indisponível — use as setas</p>
+      )}
+      {modoJogo.menuAberto && (
+        <MenuModo ativo={modoJogo.modo} destacado={modoJogo.destacado} onEscolher={modoJogo.escolher} onFechar={modoJogo.fechar} />
       )}
       <CameraPreview videoRef={videoRef} poseRef={poseRef} visivel={camera === 'ativa'} />
     </div>
