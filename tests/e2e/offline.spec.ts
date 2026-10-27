@@ -41,3 +41,21 @@ test('NFR Security: nenhuma requisição sai do próprio site durante a partida'
   expect(externas).toEqual([]);
   expect(await page.context().cookies()).toEqual([]);
 });
+
+test.describe('falha ao carregar o catálogo', () => {
+  test.use({ serviceWorkers: 'block' }); // garante que page.route intercepta o fetch do catálogo
+
+  for (const [caso, resposta] of [
+    ['404', { status: 404, body: 'não encontrado' }],
+    ['JSON com formato inválido ({})', { status: 200, json: {} }],
+  ] as const) {
+    test(`catálogo ${caso} mostra "Conecte à internet uma vez para baixar o jogo"`, async ({ page }) => {
+      await page.route('**/content/noticias.json', (route) => route.fulfill(resposta));
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+      });
+      await page.goto('/');
+      await expect(page.getByText('Conecte à internet uma vez para baixar o jogo')).toBeVisible();
+    });
+  }
+});

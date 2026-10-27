@@ -30,6 +30,9 @@ describe('sortear', () => {
   it('AC-6.2: completa com o outro lado', () => {
     expect(conta(sortear(lote(3, 12), rngSeed(3)))).toEqual({ v: 3, f: 7, unicos: 10 });
   });
+  it('AC-6.2 (espelhado): poucas falsas, completa com verdadeiras', () => {
+    expect(conta(sortear(lote(12, 3), rngSeed(6)))).toEqual({ v: 7, f: 3, unicos: 10 });
+  });
   it('AC-6.3: com menos de 10, usa todas', () => {
     expect(conta(sortear(lote(2, 4), rngSeed(4)))).toEqual({ v: 2, f: 4, unicos: 6 });
   });
