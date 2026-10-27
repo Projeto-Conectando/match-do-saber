@@ -19,7 +19,7 @@ describe('telas', () => {
     expect(screen.getByText('Câmera desativada — jogue pelas setas (Enter para começar)')).toBeInTheDocument();
   });
   it('FR-4: card mostra imagem, título, descrição, cronômetro e dica do saiba mais', () => {
-    const { container } = render(<TelaCard noticia={noticia} restanteMs={14200} saibaMais={false} ausente={false} cardRef={{ current: null }} onArrastar={() => {}} />);
+    const { container } = render(<TelaCard noticia={noticia} restanteMs={14200} saibaMais={false} ausente={false} pontos={0} cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('content/img/n1.webp'));
     expect(screen.getByText('Título X')).toBeInTheDocument();
     expect(screen.getByText('Descrição Y')).toBeInTheDocument();
@@ -27,22 +27,22 @@ describe('telas', () => {
     expect(screen.getByText(/Saiba mais/)).toBeInTheDocument();
   });
   it('AC-3.1: saiba mais aberto mostra o texto expandido', () => {
-    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais ausente={false} cardRef={{ current: null }} onArrastar={() => {}} />);
+    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais ausente={false} pontos={0} cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(screen.getByText('Mais Z')).toBeInTheDocument();
   });
   it('AC-5.3: ausente mostra "Volte para o centro"', () => {
-    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente cardRef={{ current: null }} onArrastar={() => {}} />);
+    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente pontos={0} cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(screen.getByText('Volte para o centro')).toBeInTheDocument();
   });
   it.each([
     ['direita', /saiDireita/],
     ['esquerda', /saiEsquerda/],
   ] as const)('AC-2.1/AC-2.2: card respondido sai pela %s', (saida, classe) => {
-    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} saida={saida} cardRef={{ current: null }} onArrastar={() => {}} />);
+    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} saida={saida} pontos={0} cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(container.querySelector('article')!.className).toMatch(classe);
   });
   it('card sem resposta não tem classe de saída', () => {
-    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} cardRef={{ current: null }} onArrastar={() => {}} />);
+    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={0} cardRef={{ current: null }} onArrastar={() => {}} />);
     expect(container.querySelector('article')!.className).not.toMatch(/sai(Direita|Esquerda)/);
   });
   it.each([
@@ -50,11 +50,19 @@ describe('telas', () => {
     ['erro', 'Errou'],
     ['tempo', 'Tempo esgotado'],
   ] as const)('AC-4.x: feedback %s mostra selo, veredito, explicação e técnica', (resultado, selo) => {
-    render(<TelaFeedback noticia={noticia} resultado={resultado} />);
+    render(<TelaFeedback noticia={noticia} resultado={resultado} pontos={0} />);
     expect(screen.getByText(selo)).toBeInTheDocument();
     expect(screen.getByText('É falsa')).toBeInTheDocument();
     expect(screen.getByText('Explicação W')).toBeInTheDocument();
     expect(screen.getByText('Verificar a imagem')).toBeInTheDocument();
+  });
+  it('AC-4.1: card mostra o placar parcial', () => {
+    render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} pontos={3} cardRef={{ current: null }} onArrastar={() => {}} />);
+    expect(screen.getByText('Pontos: 3')).toBeInTheDocument();
+  });
+  it('AC-4.1: feedback mostra o placar já com o card respondido', () => {
+    render(<TelaFeedback noticia={noticia} resultado="acerto" pontos={4} />);
+    expect(screen.getByText('Pontos: 4')).toBeInTheDocument();
   });
   it('AC-5.1: resumo com "N de M" e técnicas', () => {
     render(<TelaResumo pontos={7} total={10} tecnicas={['fonte', 'data']} />);

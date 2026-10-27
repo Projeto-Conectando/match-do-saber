@@ -7,6 +7,10 @@ import s from './App.module.css';
 const SELO: Record<Resultado, string> = { acerto: 'Acertou!', erro: 'Errou', tempo: 'Tempo esgotado' };
 const src = (caminho: string) => `${import.meta.env.BASE_URL}${caminho}`;
 
+function Placar({ pontos }: { pontos: number }) {
+  return <p className={s.pontos}>{`Pontos: ${pontos}`}</p>;
+}
+
 export function TelaEspera({ semNoticias, camera }: { semNoticias: boolean; camera: StatusCamera }) {
   return (
     <main className={s.centro}>
@@ -32,13 +36,15 @@ export function TelaCalibracao({ progresso }: { progresso: number }) {
   );
 }
 
-export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, cardRef, onArrastar }: {
+export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, pontos, cardRef, onArrastar }: {
   noticia: Noticia;
   restanteMs: number;
   saibaMais: boolean;
   ausente: boolean;
   /** Card já respondido saindo pela direita/esquerda (AC-2.1/AC-2.2). */
   saida?: 'direita' | 'esquerda';
+  /** Placar parcial (AC-4.1). */
+  pontos: number;
   cardRef: RefObject<HTMLElement>;
   onArrastar: (lado: 'direita' | 'esquerda') => void;
 }) {
@@ -74,18 +80,20 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, cardR
         )}
       </article>
       <div className={s.lado}>Verdade ✓</div>
+      <Placar pontos={pontos} />
       {ausente && <div className={s.sobreposicao}>Volte para o centro</div>}
     </main>
   );
 }
 
-export function TelaFeedback({ noticia, resultado }: { noticia: Noticia; resultado: Resultado }) {
+export function TelaFeedback({ noticia, resultado, pontos }: { noticia: Noticia; resultado: Resultado; pontos: number }) {
   return (
     <main className={s.centro}>
       <p className={`${s.selo} ${s[resultado]}`}>{SELO[resultado]}</p>
       <h2>{noticia.veredito === 'verdadeira' ? 'É verdadeira' : 'É falsa'}</h2>
       <p className={s.explicacao}>{noticia.explicacao}</p>
       <p className={s.tecnica}>{TECNICA_ROTULO[noticia.tecnica]}</p>
+      <Placar pontos={pontos} />
     </main>
   );
 }

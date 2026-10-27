@@ -62,6 +62,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           restanteMs={estado.restanteMs}
           saibaMais={estado.saibaMais}
           ausente={estado.ausenteMs !== null}
+          pontos={pontos(estado.partida)}
           cardRef={cardRef}
           onArrastar={(lado) => despachar({ tipo: 'escolha', resposta: lado === 'direita' ? 'verdadeira' : 'falsa' })}
         />
@@ -77,12 +78,13 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           restanteMs={0}
           saibaMais={false}
           ausente={false}
+          pontos={pontos(estado.partida)}
           saida={estado.resposta === 'verdadeira' ? 'direita' : 'esquerda'}
           cardRef={cardSaindoRef}
           onArrastar={() => {}}
         />
       ) : (
-        <TelaFeedback noticia={noticia} resultado={estado.partida.resultados[estado.indice]!} />
+        <TelaFeedback noticia={noticia} resultado={estado.partida.resultados[estado.indice]!} pontos={pontos(estado.partida)} />
       );
       break;
     }
