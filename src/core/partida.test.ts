@@ -20,6 +20,7 @@ function rodar(estado: Estado, eventos: Evento[], c = ctx()): Estado {
   return eventos.reduce((s, e) => reduzir(s, e, c), estado);
 }
 const emCard = (c = ctx()) => rodar(ESTADO_INICIAL, [{ tipo: 'enter' }], c);
+const emCardCalibrado = (c = ctx()) => rodar(ESTADO_INICIAL, [tick(16), tick(1000), tick(1000)], c);
 function cardAtual(s: Estado) {
   if (s.tela !== 'card') throw new Error(`esperava card, veio ${s.tela}`);
   return s.partida.cards[s.indice]!;
@@ -93,12 +94,32 @@ describe('card', () => {
     expect(rodar(s, [tick(100)])).toMatchObject({ saibaMais: false, restanteMs: TEMPOS.cardMs });
   });
   it('AC-5.3/AC-5.4: sem pessoa pausa; voltando antes de 10 s continua do mesmo card', () => {
-    const s = rodar(emCard(), [tick(1000), tick(4000, ninguem)]);
+    const s = rodar(emCardCalibrado(), [tick(1000), tick(4000, ninguem)]);
     expect(s).toMatchObject({ tela: 'card', ausenteMs: 4000, restanteMs: 14000 });
     expect(rodar(s, [tick(1000)])).toMatchObject({ tela: 'card', indice: 0, ausenteMs: null, restanteMs: 13000 });
   });
   it('AC-5.5: 10 s sem pessoa encerra e volta à espera', () => {
-    expect(rodar(emCard(), [tick(6000, ninguem), tick(4000, ninguem)]).tela).toBe('espera');
+    expect(rodar(emCardCalibrado(), [tick(6000, ninguem), tick(4000, ninguem)]).tela).toBe('espera');
+  });
+  it('AC-1.6: partida iniciada por Enter com câmera ativa ignora ausência', () => {
+    const s0 = emCard(ctx({ cameraAtiva: true }));
+    if (s0.tela !== 'card') throw new Error(s0.tela);
+    expect(s0.partida.entrada).toBe('alternativa');
+    const s = rodar(s0, [tick(4000, ninguem), tick(4000, ninguem), tick(4000, ninguem)]);
+    expect(s).toMatchObject({ tela: 'card', indice: 0, restanteMs: 3000, ausenteMs: null });
+    expect(rodar(s, [tick(3000, ninguem)]).tela).toBe('feedback');
+  });
+  it('AC-1.6: Enter durante a calibração também inicia em modo alternativo', () => {
+    const s = rodar(ESTADO_INICIAL, [tick(16), { tipo: 'enter' }]);
+    if (s.tela !== 'card') throw new Error(s.tela);
+    expect(s.partida.entrada).toBe('alternativa');
+  });
+  it('partida calibrada usa entrada "corpo" e pausa na ausência', () => {
+    const s0 = emCardCalibrado();
+    if (s0.tela !== 'card') throw new Error(s0.tela);
+    expect(s0.partida.entrada).toBe('corpo');
+    expect(rodar(s0, [tick(4000, ninguem)])).toMatchObject({ tela: 'card', ausenteMs: 4000, restanteMs: TEMPOS.cardMs });
+    expect(rodar(s0, [tick(6000, ninguem), tick(4000, ninguem)]).tela).toBe('espera');
   });
   it('câmera indisponível (presenca null) não pausa', () => {
     expect(rodar(emCard(), [tick(2000, null)])).toMatchObject({ restanteMs: 13000, ausenteMs: null });
@@ -127,5 +148,6 @@ describe('resumo', () => {
     expect(s).toMatchObject({ tela: 'card', indice: 0 });
     if (s.tela !== 'card') throw new Error();
     expect(s.partida.resultados).toEqual([]);
+    expect(s.partida.entrada).toBe('alternativa');
   });
 });
