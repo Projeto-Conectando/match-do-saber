@@ -35,6 +35,17 @@ describe('telas', () => {
     expect(screen.getByText('Volte para o centro')).toBeInTheDocument();
   });
   it.each([
+    ['direita', /saiDireita/],
+    ['esquerda', /saiEsquerda/],
+  ] as const)('AC-2.1/AC-2.2: card respondido sai pela %s', (saida, classe) => {
+    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} saida={saida} cardRef={{ current: null }} onArrastar={() => {}} />);
+    expect(container.querySelector('article')!.className).toMatch(classe);
+  });
+  it('card sem resposta não tem classe de saída', () => {
+    const { container } = render(<TelaCard noticia={noticia} restanteMs={1000} saibaMais={false} ausente={false} cardRef={{ current: null }} onArrastar={() => {}} />);
+    expect(container.querySelector('article')!.className).not.toMatch(/sai(Direita|Esquerda)/);
+  });
+  it.each([
     ['acerto', 'Acertou!'],
     ['erro', 'Errou'],
     ['tempo', 'Tempo esgotado'],

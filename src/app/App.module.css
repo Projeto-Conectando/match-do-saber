@@ -11,6 +11,12 @@
 .mesa { height: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; justify-items: center; }
 .lado { font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 700; opacity: 0.7; }
 .card { position: relative; width: min(34rem, 42vw); max-height: 92vh; background: #fff; color: #1b1035; border-radius: 1.5rem; padding: 1.25rem; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.5rem; touch-action: none; user-select: none; transition: transform 0.08s linear; }
+.saiDireita, .saiEsquerda { pointer-events: none; }
+.saiDireita { animation: saiDireita 250ms ease-in forwards; }
+.saiEsquerda { animation: saiEsquerda 250ms ease-in forwards; }
+/* Sem `from`: parte da inclinação atual do card. */
+@keyframes saiDireita { to { transform: translateX(120vw) rotate(20deg); } }
+@keyframes saiEsquerda { to { transform: translateX(-120vw) rotate(-20deg); } }
 .card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 1rem; }
 .card h2 { margin: 0; font-size: clamp(1.25rem, 2.2vw, 1.75rem); line-height: 1.2; overflow-wrap: anywhere; }
 .card p { margin: 0; font-size: clamp(1rem, 1.5vw, 1.2rem); overflow-wrap: anywhere; }

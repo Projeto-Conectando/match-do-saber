@@ -72,6 +72,11 @@ describe('card', () => {
     const s = rodar(emCard(), [tick(10000), tick(5000)]);
     if (s.tela !== 'feedback') throw new Error(s.tela);
     expect(s.partida.resultados).toEqual(['tempo']);
+    expect(s.resposta).toBeNull(); // sem lado: não há animação de saída
+  });
+  it.each(['verdadeira', 'falsa'] as const)('AC-2.1/AC-2.2: feedback guarda o lado escolhido (%s) para a animação de saída', (resposta) => {
+    const s = reduzir(emCard(), { tipo: 'escolha', resposta }, ctx());
+    expect(s).toMatchObject({ tela: 'feedback', resposta, restanteMs: TEMPOS.feedbackMs });
   });
   it('AC-4.4: depois do feedback vem o próximo card com 15 s; escolha no feedback é ignorada', () => {
     const s1 = reduzir(emCard(), { tipo: 'escolha', resposta: 'falsa' }, ctx());

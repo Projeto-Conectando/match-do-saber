@@ -32,11 +32,13 @@ export function TelaCalibracao({ progresso }: { progresso: number }) {
   );
 }
 
-export function TelaCard({ noticia, restanteMs, saibaMais, ausente, cardRef, onArrastar }: {
+export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, cardRef, onArrastar }: {
   noticia: Noticia;
   restanteMs: number;
   saibaMais: boolean;
   ausente: boolean;
+  /** Card já respondido saindo pela direita/esquerda (AC-2.1/AC-2.2). */
+  saida?: 'direita' | 'esquerda';
   cardRef: RefObject<HTMLElement>;
   onArrastar: (lado: 'direita' | 'esquerda') => void;
 }) {
@@ -46,7 +48,7 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, cardRef, onA
       <div className={s.lado}>✗ Falsa</div>
       <article
         ref={cardRef}
-        className={s.card}
+        className={saida ? `${s.card} ${saida === 'direita' ? s.saiDireita : s.saiEsquerda}` : s.card}
         onPointerDown={(e) => { inicioX.current = e.clientX; }}
         onPointerUp={(e) => {
           if (inicioX.current === null) return;
@@ -56,7 +58,7 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, cardRef, onA
           else if (dx < -100) onArrastar('esquerda');
         }}
       >
-        <div className={s.cronometro}>{Math.ceil(restanteMs / 1000)}</div>
+        {!saida && <div className={s.cronometro}>{Math.ceil(restanteMs / 1000)}</div>}
         {saibaMais ? (
           <div className={s.saibaMais}>
             <h2>{noticia.titulo}</h2>

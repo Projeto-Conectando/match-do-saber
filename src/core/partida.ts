@@ -28,7 +28,8 @@ export type Estado =
   | { tela: 'espera' }
   | { tela: 'calibracao'; centradoMs: number; ausenteMs: number }
   | EstadoCard
-  | { tela: 'feedback'; partida: Partida; indice: number; restanteMs: number }
+  // `resposta` guarda o lado escolhido (para a animação de saída); null quando o tempo esgotou.
+  | { tela: 'feedback'; partida: Partida; indice: number; restanteMs: number; resposta: Veredito | null }
   | { tela: 'resumo'; partida: Partida };
 
 export type Evento =
@@ -51,12 +52,13 @@ function iniciarPartida(ctx: Contexto, entrada: Entrada): Estado {
   return cards.length === 0 ? ESTADO_INICIAL : card({ cards, resultados: [], entrada }, 0);
 }
 
-function registrar(e: EstadoCard, r: Resultado): Estado {
+function registrar(e: EstadoCard, r: Resultado, resposta: Veredito | null): Estado {
   return {
     tela: 'feedback',
     partida: { ...e.partida, resultados: [...e.partida.resultados, r] },
     indice: e.indice,
     restanteMs: TEMPOS.feedbackMs,
+    resposta,
   };
 }
 
@@ -83,7 +85,7 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
     case 'card': {
       if (evento.tipo === 'escolha') {
         const certo = evento.resposta === estado.partida.cards[estado.indice]!.veredito;
-        return registrar(estado, certo ? 'acerto' : 'erro');
+        return registrar(estado, certo ? 'acerto' : 'erro', evento.resposta);
       }
       if (evento.tipo === 'saibaMais') return { ...estado, saibaMais: !estado.saibaMais, saibaMaisOciosoMs: 0 };
       if (evento.tipo !== 'tick') return estado;
@@ -101,7 +103,7 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
           : { ...base, saibaMaisOciosoMs: ocioso };
       }
       const restanteMs = base.restanteMs - evento.dtMs;
-      return restanteMs <= 0 ? registrar(base, 'tempo') : { ...base, restanteMs };
+      return restanteMs <= 0 ? registrar(base, 'tempo', null) : { ...base, restanteMs };
     }
     case 'feedback': {
       if (evento.tipo !== 'tick') return estado;

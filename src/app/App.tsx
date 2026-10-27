@@ -7,6 +7,9 @@ import { TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from '
 import { useJogo } from './useJogo';
 import s from './App.module.css';
 
+// Animação de saída do card respondido; sai da janela de 3 s do feedback (TEMPOS inalterado).
+const SAIDA_MS = 250;
+
 export function App() {
   const [noticias, setNoticias] = useState<Noticia[] | null>(null);
   const [erro, setErro] = useState(false);
@@ -29,6 +32,7 @@ export function App() {
 function Jogo({ noticias }: { noticias: Noticia[] }) {
   const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias);
   const cardRef = useRef<HTMLElement>(null);
+  const cardSaindoRef = useRef<HTMLElement>(null); // fora do laço de inclinação
 
   // Inclinação do card acompanhando o corpo (AC-2.3), fora do ciclo de render.
   useEffect(() => {
@@ -63,9 +67,25 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
         />
       );
       break;
-    case 'feedback':
-      tela = <TelaFeedback noticia={estado.partida.cards[estado.indice]!} resultado={estado.partida.resultados[estado.indice]!} />;
+    case 'feedback': {
+      const noticia = estado.partida.cards[estado.indice]!;
+      const saindo = estado.resposta !== null && TEMPOS.feedbackMs - estado.restanteMs < SAIDA_MS;
+      tela = saindo ? (
+        <TelaCard
+          key={estado.indice}
+          noticia={noticia}
+          restanteMs={0}
+          saibaMais={false}
+          ausente={false}
+          saida={estado.resposta === 'verdadeira' ? 'direita' : 'esquerda'}
+          cardRef={cardSaindoRef}
+          onArrastar={() => {}}
+        />
+      ) : (
+        <TelaFeedback noticia={noticia} resultado={estado.partida.resultados[estado.indice]!} />
+      );
       break;
+    }
     case 'resumo':
       tela = <TelaResumo pontos={pontos(estado.partida)} total={estado.partida.cards.length} tecnicas={tecnicasDaPartida(estado.partida)} />;
       break;
