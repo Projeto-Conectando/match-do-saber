@@ -104,9 +104,22 @@ export function BotaoSair({ onSair }: { onSair: () => void }) {
   );
 }
 
-export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, pontos, modo = 'corpo', cardRef, onArrastar }: {
+/** Tempo restante do card (AC-4.6); vermelha nos últimos 5 s (AC-4.7). */
+export function BarraTempo({ restanteMs, totalMs, alerta }: { restanteMs: number; totalMs: number; alerta: boolean }) {
+  const fracao = Math.max(0, Math.min(1, restanteMs / totalMs));
+  return (
+    <div className={alerta ? `${s.barraTempo} ${s.barraAlerta}` : s.barraTempo} role="timer" aria-label="Tempo restante">
+      <div className={s.barraPreenchida} style={{ width: `${fracao * 100}%` }} />
+      <span className={s.barraSegundos}>{`${Math.ceil(restanteMs / 1000)} s`}</span>
+    </div>
+  );
+}
+
+export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, pontos, modo = 'corpo', totalMs = 15000, cardRef, onArrastar }: {
   noticia: Noticia;
   restanteMs: number;
+  /** Duração do card, para a fração da barra de tempo (AC-4.6). */
+  totalMs?: number;
   saibaMais: boolean;
   ausente: boolean;
   /** Card já respondido saindo pela direita/esquerda (AC-2.1/AC-2.2). */
@@ -118,12 +131,14 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, ponto
   onArrastar: (lado: 'direita' | 'esquerda') => void;
 }) {
   const inicioX = useRef<number | null>(null);
+  const alerta = !saida && restanteMs <= 5000;
+  const pulsando = alerta && !saibaMais && !ausente; // AC-4.7: pausado não pulsa
   return (
     <main className={s.mesa}>
       <div className={s.lado}>✗ Falsa</div>
       <article
         ref={cardRef}
-        className={saida ? `${s.card} ${saida === 'direita' ? s.saiDireita : s.saiEsquerda}` : s.card}
+        className={[s.card, saida && (saida === 'direita' ? s.saiDireita : s.saiEsquerda), pulsando && s.pulsando].filter(Boolean).join(' ')}
         onPointerDown={(e) => { inicioX.current = e.clientX; }}
         onPointerUp={(e) => {
           if (inicioX.current === null) return;
@@ -133,7 +148,6 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, ponto
           else if (dx < -100) onArrastar('esquerda');
         }}
       >
-        {!saida && <div className={s.cronometro}>{Math.ceil(restanteMs / 1000)}</div>}
         {saibaMais ? (
           <div className={s.saibaMais}>
             <h2>{noticia.titulo}</h2>
@@ -152,6 +166,7 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, ponto
       {/* Fora do card, para não tirar espaço do texto da notícia (FR-4). */}
       {modo !== 'corpo' && <p className={s.dicaModo}>{DICA_GESTOS[modo]}</p>}
       <Placar pontos={pontos} />
+      {!saida && <BarraTempo restanteMs={restanteMs} totalMs={totalMs} alerta={alerta} />}
       {ausente && <div className={s.sobreposicao}>Volte para o centro</div>}
     </main>
   );

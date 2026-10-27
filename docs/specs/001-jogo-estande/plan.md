@@ -12,6 +12,7 @@
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
 - (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
+- (v4.0.0) Card parado até a escolha (sem inclinar com o corpo/cabeça); cronômetro numa barra grossa na base da tela com os segundos; nos últimos 5 s barra vermelha e card pulsando em vermelho (pausado, não pulsa).
 - (v3.0.0) Início só manual: a câmera nunca inicia nada; "▶ Iniciar" ou Enter na espera abre a calibração (câmera ativa) ou começa direto (sem câmera); Enter na calibração a pula. Sair, ausência de 10 s e o fim de calibração vazia deixam o jogo na espera.
 - (v2.0.0) Menu "Configurações": modo, tempo por card (10, 15, 20, 25, 30 s) e som (ligado/desligado). Botões "▶ Iniciar" (= Enter) e "✕ Sair" (= Esc, encerra sem resumo). Sons sintetizados: deslizar na escolha, positivo no acerto, erro no erro e no tempo esgotado. Card centralizado na vertical.
 - Todos os textos em português do Brasil.
@@ -3911,6 +3912,180 @@ Itens invalidados pela v3.0.0:
 
 ---
 
+## Phase 14 (added v4.0.0): Card parado e barra de tempo
+
+**Implements:** FR-2, FR-4, FR-9 (trechos reescritos) | **Satisfies:** AC-2.3, AC-9.13, AC-4.5, AC-4.6, AC-4.7, AC-9.17
+**Files:** `src/app/App.tsx`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.module.css`, `tests/e2e/configuracoes.spec.ts`, `tests/e2e/partida-v2.spec.ts`, `tests/e2e/barra-tempo.spec.ts`
+**Interfaces:** Consumes: `TelaCard`, `cardRef` e o laço de inclinação de `App.tsx` (Fases 5 e 10); `cfg.config.tempoCardS` (`useConfiguracoes`, Fase 10); `estado.restanteMs`, `estado.saibaMais` e `estado.ausenteMs` do card (`src/core/partida.ts`). Produces: `BarraTempo({ restanteMs, totalMs, alerta })` e a prop `totalMs?: number` de `TelaCard` (padrão 15000), ambas em `src/app/Telas.tsx`.
+
+O card deixa de acompanhar o movimento: sai o laço que aplicava `inclinacaoRef` ao estilo do card, e com ele o tremor da captura. O rastreio não muda: `useJogo` continua calculando `inclinacao` e os gestos. O círculo do cronômetro sobre o card dá lugar a uma barra grossa na base da tela, e nos últimos 5 s a barra fica vermelha e o card pulsa.
+
+Itens invalidados pela v4.0.0:
+- o laço de inclinação em `App.tsx` (`el.style.transform = translateX(…) rotate(…)`) e a `transition: transform` do `.card`
+- o `.cronometro` sobre o card
+- a asserção de E2E que procura o número de segundos dentro do `article` (AC-9.17)
+- o cálculo de centro do AC-4.5 contra a altura da janela inteira
+
+Decisões técnicas (inline):
+- **Barra posicionada em relação ao `.app`:** a barra (`role="timer"`, `aria-label="Tempo restante"`) fica `position: absolute` na base, com altura de 4rem.
+- **Área de jogo sem a barra:** a área de jogo (`.mesa`) passa a ter `height: calc(100% - 4rem)`. Placar, dica do modo e prévia da câmera sobem 4rem.
+- **Pulso só em CSS:** usa `box-shadow`, `border` e `transform: scale`. A classe `pulsando` só entra com o card parado (sem `saida`) e o cronômetro correndo (sem "saiba mais" e sem ausência).
+
+- [ ] Em `src/app/Telas.test.tsx`:
+  - Trocar, no teste "FR-4: card mostra imagem, título, descrição, cronômetro e dica do saiba mais", a linha `expect(screen.getByText('15')).toBeInTheDocument();` por:
+    ```tsx
+    expect(screen.getByRole('timer', { name: 'Tempo restante' })).toHaveTextContent('15 s');
+    expect(container.querySelector('article')).not.toHaveTextContent(/^\d+$/m);
+    ```
+  - Acrescentar o bloco:
+    ```tsx
+    describe('v4.0.0: barra de tempo e pulso', () => {
+      const props = { noticia, saibaMais: false, ausente: false, pontos: 0, totalMs: 15000, cardRef: { current: null }, onArrastar: () => {} };
+      it('AC-4.6: barra mostra os segundos e a fração restante', () => {
+        render(<BarraTempo restanteMs={7500} totalMs={15000} alerta={false} />);
+        const barra = screen.getByRole('timer', { name: 'Tempo restante' });
+        expect(barra).toHaveTextContent('8 s');
+        expect(barra.firstElementChild).toHaveStyle({ width: '50%' });
+      });
+      it('AC-4.7: com 5 s ou menos e cronômetro correndo, o card pulsa e a barra fica em alerta', () => {
+        const { container } = render(<TelaCard {...props} restanteMs={5000} />);
+        expect(container.querySelector('article')!.className).toMatch(/pulsando/);
+        expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+      });
+      it('AC-4.7: acima de 5 s não pulsa', () => {
+        const { container } = render(<TelaCard {...props} restanteMs={5001} />);
+        expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+        expect(screen.getByRole('timer').className).not.toMatch(/barraAlerta/);
+      });
+      it.each([['saiba mais', { saibaMais: true }], ['Volte para o centro', { ausente: true }]] as const)(
+        'AC-4.7: pausado (%s) não pulsa',
+        (_nome, pausa) => {
+          const { container } = render(<TelaCard {...props} {...pausa} restanteMs={3000} />);
+          expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+        },
+      );
+      it('card saindo não mostra a barra nem pulsa', () => {
+        const { container } = render(<TelaCard {...props} restanteMs={3000} saida="direita" />);
+        expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+        expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+      });
+    });
+    ```
+    (`BarraTempo` entra no import de `./Telas`. Com CSS Modules no Vitest, os nomes de classe podem vir vazios; se `className` não trouxer o nome local, configurar `test.css.modules.classNameStrategy: 'non-scoped'` em `vitest.config.ts` e informar.)
+- [ ] Em `tests/e2e/configuracoes.spec.ts`, trocar `await expect(card.getByText('10', { exact: true })).toBeVisible();` por:
+  ```ts
+  await expect(page.getByRole('timer', { name: 'Tempo restante' })).toHaveText('10 s');   // AC-9.17
+  ```
+- [ ] Em `tests/e2e/partida-v2.spec.ts`, trocar o corpo do teste AC-4.5 (depois de `page.keyboard.press('Enter')`) por:
+  ```ts
+  const box = (await page.locator('article').boundingBox())!;
+  const barra = (await page.getByRole('timer', { name: 'Tempo restante' }).boundingBox())!;
+  expect(barra.y + barra.height).toBeCloseTo(vp.height, 0);          // colada na base
+  expect(box.y + box.height).toBeLessThanOrEqual(barra.y);            // card não fica atrás da barra
+  expect(Math.abs(box.y + box.height / 2 - barra.y / 2)).toBeLessThanOrEqual(8); // centro da área de jogo
+  ```
+- [ ] Escrever `tests/e2e/barra-tempo.spec.ts`:
+  ```ts
+  import { expect, test } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto('/');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await page.keyboard.press('Enter');
+  });
+
+  test('AC-2.3: o card não recebe transformação de inclinação', async ({ page }) => {
+    const card = page.locator('article');
+    await expect(card).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(card).not.toHaveAttribute('style', /transform/);
+  });
+
+  test('AC-4.6: barra larga na base, diminuindo com o tempo', async ({ page }) => {
+    const barra = page.getByRole('timer', { name: 'Tempo restante' });
+    await expect(barra).toHaveText('15 s');
+    const caixa = (await barra.boundingBox())!;
+    expect(caixa.width).toBeGreaterThan(1300);
+    expect(caixa.height).toBeGreaterThanOrEqual(48);
+    const largura = () => barra.locator(':scope > div').evaluate((el) => el.getBoundingClientRect().width);
+    const antes = await largura();
+    await page.waitForTimeout(2000);
+    expect(await largura()).toBeLessThan(antes);
+  });
+
+  test('AC-4.7: nos últimos 5 s o card pulsa; com "saiba mais" aberto, não', async ({ page }) => {
+    test.setTimeout(30_000);
+    const card = page.locator('article');
+    await expect(page.getByRole('timer')).toHaveText('5 s', { timeout: 12_000 });
+    await expect(card).toHaveClass(/pulsando/);
+    await page.keyboard.press('ArrowUp');                        // saiba mais pausa
+    await expect(card).not.toHaveClass(/pulsando/);
+  });
+  ```
+- [ ] Rodar `npx vitest run src/app` e `npm run fixture && npx vite build && npx playwright test tests/e2e/barra-tempo.spec.ts tests/e2e/partida-v2.spec.ts tests/e2e/configuracoes.spec.ts`. Esperado: FAIL.
+- [ ] Em `src/app/Telas.tsx`:
+  - Acrescentar `BarraTempo`:
+    ```tsx
+    /** Tempo restante do card (AC-4.6); vermelha nos últimos 5 s (AC-4.7). */
+    export function BarraTempo({ restanteMs, totalMs, alerta }: { restanteMs: number; totalMs: number; alerta: boolean }) {
+      const fracao = Math.max(0, Math.min(1, restanteMs / totalMs));
+      return (
+        <div className={alerta ? `${s.barraTempo} ${s.barraAlerta}` : s.barraTempo} role="timer" aria-label="Tempo restante">
+          <div className={s.barraPreenchida} style={{ width: `${fracao * 100}%` }} />
+          <span className={s.barraSegundos}>{`${Math.ceil(restanteMs / 1000)} s`}</span>
+        </div>
+      );
+    }
+    ```
+  - Em `TelaCard`:
+    - Acrescentar a prop `totalMs = 15000` (`totalMs?: number` no tipo).
+    - Remover a linha `{!saida && <div className={s.cronometro}>…</div>}`.
+    - Calcular `const alerta = !saida && restanteMs <= 5000;` e `const pulsando = alerta && !saibaMais && !ausente;`.
+    - Montar a classe do `article` como `[s.card, saida && (saida === 'direita' ? s.saiDireita : s.saiEsquerda), pulsando && s.pulsando].filter(Boolean).join(' ')`.
+    - Logo depois de `<Placar pontos={pontos} />`, acrescentar `{!saida && <BarraTempo restanteMs={restanteMs} totalMs={totalMs} alerta={alerta} />}`.
+- [ ] Em `src/app/App.tsx`:
+  - Remover o `useEffect` do laço de inclinação (o que escreve `el.style.transform`) e o `inclinacaoRef` da desestruturação de `useJogo`. `useJogo` continua devolvendo `inclinacaoRef`; o rastreio não muda.
+  - Trocar o comentário de `cardSaindoRef` para `// card que está saindo (AC-2.1/AC-2.2)`.
+  - Nos dois `TelaCard`, passar `totalMs={cfg.config.tempoCardS * 1000}`.
+- [ ] Em `src/app/App.module.css`:
+  - Remover a regra `.cronometro`.
+  - No `.card`, remover `transition: transform 0.08s linear;` e trocar `max-height: 92vh` por `max-height: calc(92vh - 4rem)`.
+  - Trocar `.mesa { height: 100%; …}` por `.mesa { height: calc(100% - 4rem); …}`.
+  - Em `.pontos`, trocar `bottom: 1rem` por `bottom: 5rem`; em `.dicaModo`, `bottom: 4.5rem` por `bottom: 8.5rem`; em `.preview`, `bottom: 1rem` por `bottom: 5rem`.
+  - Acrescentar:
+    ```css
+    .barraTempo { position: absolute; left: 0; right: 0; bottom: 0; height: 4rem; background: #2a1850; overflow: hidden; }
+    .barraPreenchida { position: absolute; top: 0; bottom: 0; left: 0; background: #7cff6b; transition: width 0.1s linear; }
+    .barraAlerta .barraPreenchida { background: #ff3b3b; }
+    .barraSegundos { position: relative; display: grid; place-items: center; height: 100%; font-size: 2rem; font-weight: 800; color: #fff; text-shadow: 0 1px 4px rgb(0 0 0 / 0.8); }
+    .pulsando { border: 4px solid #ff3b3b; animation: pulsar 1s ease-in-out infinite; }
+    @keyframes pulsar {
+      0%, 100% { box-shadow: 0 0 0 0 rgb(255 59 59 / 0.6); transform: scale(1); }
+      50% { box-shadow: 0 0 36px 12px rgb(255 59 59 / 0.85); transform: scale(1.03); }
+    }
+    ```
+  - Se o teste de FR-4 (texto no limite em 1366×768) falhar com a área menor, ajustar só o CSS do card (por exemplo `.card img { aspect-ratio: 16 / 9; }` ou gaps menores), nunca o teste, e registrar a mudança.
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 22 + 3 = 25).
+- [ ] Commit: `feat(app): static card, bottom time bar and red pulse in the last 5 s (Phase 14: Card parado e barra de tempo)`
+
+---
+
+## Phase 15 (added v4.0.0): Verificação do card parado e da barra no hardware
+
+**Implements:** FR-2, FR-4 | **Satisfies:** AC-2.3, AC-4.6, AC-4.7 (hardware)
+
+- [ ] Com a câmera real, jogar uma partida em cada modo: o card não pode tremer nem inclinar antes da escolha; os gestos continuam funcionando como antes.
+- [ ] A ~2 m da TV, conferir se a barra e os segundos são legíveis, e se o pulso vermelho dos últimos 5 s chama a atenção sem esconder o texto.
+- [ ] Conferir que placar, dica do modo e prévia da câmera não ficam atrás da barra.
+- [ ] Com a equipe de conteúdo, olhar algumas notícias reais de técnica "imagem": a imagem do card agora é cortada em 16:9 (antes 4:3, mudado para o texto caber acima da barra). Conferir que a parte importante da foto continua visível.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -3933,7 +4108,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-1 | 3, 5, 12 (reescrito v3.0.0), 13 |
   | FR-2 | 4, 5 |
   | FR-3 | 5 |
-  | FR-4 | 1 (limites), 5 |
+  | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15 |
   | FR-5 | 3 |
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
@@ -3957,3 +4132,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 2.0.0 | 11 | Adicionada: verificação de configurações, sons e layout no hardware |
 | 3.0.0 | 12 | Adicionada: início só manual (a câmera deixa de iniciar a partida; Enter/Iniciar abre a calibração com câmera ativa) |
 | 3.0.0 | 13 | Adicionada: verificação do início manual no hardware |
+| 4.0.0 | 5, 8.2, 10 | Parcialmente invalidadas: inclinação do card (laço em App.tsx) e o cronômetro sobre o card; reescritos na Fase 14 |
+| 4.0.0 | 14 | Adicionada: card parado, barra de tempo e pulso vermelho |
+| 4.0.0 | 15 | Adicionada: verificação no hardware |

@@ -64,7 +64,10 @@ for (const vp of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) 
     await abrir(page);
     await page.keyboard.press('Enter');
     const box = (await page.locator('article').boundingBox())!;
-    expect(Math.abs(box.y + box.height / 2 - vp.height / 2)).toBeLessThanOrEqual(8);
+    const barra = (await page.getByRole('timer', { name: 'Tempo restante' }).boundingBox())!;
+    expect(barra.y + barra.height).toBeCloseTo(vp.height, 0);          // colada na base
+    expect(box.y + box.height).toBeLessThanOrEqual(barra.y);            // card não fica atrás da barra
+    expect(Math.abs(box.y + box.height / 2 - barra.y / 2)).toBeLessThanOrEqual(8); // centro da área de jogo
   });
 }
 

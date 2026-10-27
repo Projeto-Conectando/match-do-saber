@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 3.0.0
+**Version:** 4.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -17,6 +17,7 @@
 | 1.1.0 | 2026-10-27 | Adicionados Story 9 e FR-9: menu "Modo de jogo" com modos acessíveis Mão e Cabeça (Corpo continua padrão); FR-2 passa a ser o modo Corpo |
 | 2.0.0 | 2026-10-27 | Reescritos Story 9 e FR-9: o menu "Modo de jogo" vira "Configurações" (modo, tempo por card de 10 a 30 s, som); o tempo por card deixa de ser fixo em 15 s (FR-1, AC-1.2, AC-4.4). Adicionados Story 10/FR-10 (botões Iniciar e Sair), Story 11/FR-11 (sons) e AC-4.5 (card centralizado na vertical) |
 | 3.0.0 | 2026-10-27 | Início só manual: a câmera deixa de iniciar a partida sozinha (reescritos AC-1.1, AC-1.6, AC-10.1, FR-1 e a linha "Iluminação ruim" dos erros; ajustados AC-1.4 e AC-10.3; acrescentados AC-1.7 e AC-1.8). Causa: depois de uma partida, de Sair ou de a pessoa sair do quadro, o jogo recomeçava sozinho se alguém continuasse no quadro |
+| 4.0.0 | 2026-10-27 | Card parado até a escolha: reescritos AC-2.3 e AC-9.13 (o card não inclina mais com o corpo ou a cabeça, porque tremia com a captura da câmera; rastreio e gestos não mudam). Cronômetro reescrito em FR-4: sai o número em cima do card, entra uma barra grande na base da tela, com os segundos (AC-4.6), e nos últimos 5 s o card pulsa em vermelho (AC-4.7). AC-4.5 passa a medir a área de jogo sem a barra |
 
 ---
 
@@ -81,7 +82,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 - [ ] **AC-2.1** Given um card está na tela When o jogador desloca o tronco para a **própria direita** além do limiar e se mantém por ~300 ms Then o card é registrado como "match" (resposta "verdadeira") e sai pela direita da tela.
 - [ ] **AC-2.2** Given um card está na tela When o jogador desloca o tronco para a **própria esquerda** além do limiar e se mantém por ~300 ms Then o card é registrado como "descarte" (resposta "falsa") e sai pela esquerda da tela.
-- [ ] **AC-2.3** Given um card está na tela When o jogador inclina o tronco para um lado sem atingir o limiar Then o card inclina na mesma direção, proporcionalmente, e nenhuma escolha é registrada.
+- [ ] **AC-2.3** Given um card está na tela When o jogador se move (inclina o tronco, mexe os braços ou a cabeça) sem completar um gesto Then o card fica parado, sem inclinar nem tremer, e nenhuma escolha é registrada; ele só se move ao sair pela direita ou pela esquerda depois de uma escolha (AC-2.1, AC-2.2).
 - [ ] **AC-2.4** Given o jogador acabou de fazer uma escolha When o próximo card aparece e o jogador ainda está deslocado para um lado Then nenhuma nova escolha é aceita até ele voltar à área central.
 - [ ] **AC-2.5** Given um card está na tela When o operador pressiona → ou ← (ou arrasta o card com mouse/toque para a direita ou esquerda) Then o resultado é o mesmo de AC-2.1 ou AC-2.2, respectivamente.
 - [ ] **AC-2.6** Given a câmera está ativa durante a partida When o jogador olha para a tela Then ele vê uma prévia pequena e espelhada de si mesmo com o esqueleto detectado desenhado por cima.
@@ -112,7 +113,9 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-4.2** Given o jogador escolheu um card When a escolha não corresponde ao veredito Then aparece por 3 s o selo "Errou" com o veredito, a explicação e a técnica, e o placar não muda.
 - [ ] **AC-4.3** Given um card está na tela When o cronômetro chega a 0 sem escolha Then aparece por 3 s o selo "Tempo esgotado" com o veredito, a explicação e a técnica, e o placar não muda.
 - [ ] **AC-4.4** Given o feedback de um card terminou When ainda há cards na partida Then o próximo card aparece com o cronômetro no tempo por card configurado.
-- [ ] **AC-4.5** Given um card está na tela (parado, inclinando ou saindo) When a tela tem 1366×768 ou 1920×1080 Then o card fica centralizado na vertical: o centro do card fica a no máximo 8 px do centro da área de jogo, sem cortar texto (FR-4).
+- [ ] **AC-4.5** Given um card está na tela (parado ou saindo) When a tela tem 1366×768 ou 1920×1080 Then o card fica centralizado na vertical: o centro do card fica a no máximo 8 px do centro da área de jogo, que é a tela menos a barra de tempo (AC-4.6), sem cortar texto (FR-4) e sem ficar atrás da barra.
+- [ ] **AC-4.6** Given um card está na tela When o tempo passa Then uma barra de tempo grossa, com a largura da tela e colada na base, diminui da direita para a esquerda na proporção do tempo restante e mostra dentro dela os segundos restantes (por exemplo, "12 s"); não há mais número de tempo em cima do card.
+- [ ] **AC-4.7** Given um card está na tela com o cronômetro correndo When faltam 5 s ou menos Then a barra fica vermelha e o card ganha borda e brilho vermelhos que pulsam cerca de 1 vez por segundo, crescendo levemente; com o cronômetro pausado ("saiba mais" aberto ou "Volte para o centro") o card não pulsa.
 
 ### Story 5: Ver o resumo e liberar o estande
 
@@ -188,7 +191,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-9.10** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça para o **próprio lado direito** (~15° em relação à posição registrada na calibração) e mantém por ~300 ms Then o card é registrado como "match" e sai pela direita; para o lado esquerdo, como "descarte" e sai pela esquerda.
 - [ ] **AC-9.11** Given o modo Cabeça e um card na tela When o jogador levanta o queixo (olha para cima) e mantém por ~500 ms Then o "saiba mais" abre (ou fecha, se já estiver aberto) e nenhuma escolha é registrada.
 - [ ] **AC-9.12** Given o modo Cabeça e o jogador acabou de fazer uma escolha When o próximo card aparece com a cabeça ainda inclinada Then nenhuma nova escolha é aceita até ele voltar a cabeça ao centro.
-- [ ] **AC-9.13** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça sem atingir o limiar Then o card inclina na mesma direção, proporcionalmente, e nenhuma escolha é registrada.
+- [ ] **AC-9.13** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça sem atingir o limiar Then o card fica parado (AC-2.3) e nenhuma escolha é registrada.
 - [ ] **AC-9.14** Given o modo Mão ou Cabeça When a tela de calibração ou um card aparece Then as instruções mostram os gestos do modo ativo: Mão — "Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais"; Cabeça — "Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais".
 - [ ] **AC-9.15** Given o modo Mão ou Cabeça e um jogador sentado diante da câmera, com ombros e rosto visíveis When ele fica no centro por 2 s Then a calibração conclui e a partida começa.
 - [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
@@ -250,7 +253,7 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 - Medir o deslocamento em relação à posição central registrada na calibração da partida.
 - Exigir retorno à área central entre duas escolhas.
 - Seguir só a pessoa mais central e maior no quadro.
-- Mostrar a inclinação proporcional do card e a prévia espelhada com esqueleto.
+- Mostrar a prévia espelhada com esqueleto. O card não acompanha o movimento do jogador (AC-2.3).
 
 **Must not:**
 - Gravar, armazenar ou transmitir imagens ou vídeo da câmera.
@@ -265,11 +268,12 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 ### FR-4: Conteúdo do card e do feedback
 
 **Must:**
-- Mostrar no card: imagem, título e descrição curta da notícia, além do cronômetro e de uma indicação de como abrir o "saiba mais".
+- Mostrar no card: imagem, título e descrição curta da notícia, e uma indicação de como abrir o "saiba mais".
+- Mostrar o tempo restante numa barra grande na base da tela, com os segundos dentro (AC-4.6), e destacar os últimos 5 s com a barra vermelha e o card pulsando em vermelho (AC-4.7).
 - Mostrar no "saiba mais" o texto expandido da notícia.
 - Mostrar no feedback, para todo resultado: selo ("Acertou!", "Errou", "Tempo esgotado"), veredito, explicação e técnica de checagem.
 - Mostrar todos os textos em português do Brasil.
-- Centralizar o card na vertical da área de jogo, parado, inclinando ou saindo (AC-4.5).
+- Centralizar o card na vertical da área de jogo (a tela menos a barra de tempo), parado ou saindo (AC-4.5).
 
 **Must not:**
 - Cortar título ou descrição do card: todo o texto cadastrado aparece por inteiro numa tela de 1366×768 ou maior.
@@ -321,7 +325,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Aplicar o tempo por card a todos os cards da partida (AC-1.2, AC-4.4, AC-9.17).
 - Guardar as três configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
 - Modo Mão: própria mão direita acima do ombro (~300 ms) = match; mão esquerda = descarte; as duas mãos acima dos ombros (~500 ms) = saiba mais; exigir baixar as mãos entre duas escolhas.
-- Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; inclinar o card proporcionalmente à inclinação da cabeça.
+- Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; manter o card parado até a escolha (AC-2.3, AC-9.13).
 - Nos modos Mão e Cabeça, detectar presença e centralização pela parte de cima do corpo (ombros e rosto), para que um jogador sentado consiga calibrar.
 - Mostrar nas instruções da calibração e do card os gestos do modo ativo (AC-9.14).
 - Manter, em todos os modos, a entrada alternativa (FR-3), os demais tempos (FR-1), a pontuação e o sorteio (FR-5) e a seleção da pessoa mais central e maior no quadro (FR-2).
@@ -360,7 +364,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ### Performance
 
 - O gesto é confirmado em até 1 s depois de o jogador atingir a posição (já contando o tempo de permanência), num notebook comum com webcam de 720p, em qualquer modo de jogo.
-- A prévia da câmera e a inclinação do card atualizam a pelo menos 15 quadros por segundo nesse notebook.
+- A prévia da câmera e a barra de tempo atualizam a pelo menos 15 quadros por segundo nesse notebook.
 - Com o conteúdo já em cache, o jogo vai do clique no ícone à tela de espera em até 5 s.
 - A transição de um card para o próximo (depois do feedback) leva menos de 300 ms, sem imagem carregando visivelmente.
 
@@ -425,6 +429,11 @@ Decisões da v3.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
 - Com câmera ativa, Iniciar/Enter leva à calibração de 2 s e depois à partida (AC-1.7); sem câmera, começa direto (AC-1.6).
 - Enter na calibração pula a calibração e joga pelas setas (AC-1.8): mantém o caminho para iluminação ruim.
 - Depois de Sair, do fim por ausência de 10 s ou da calibração sem ninguém, o jogo fica na espera.
+
+Decisões da v4.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
+- O card fica parado até a escolha: não inclina com o corpo nem com a cabeça. O rastreio da câmera e os gestos não mudam.
+- O cronômetro vira uma barra grossa na base da tela, com os segundos dentro; o número em cima do card sai.
+- Nos últimos 5 s: barra vermelha e card com borda e brilho vermelhos pulsando (~1 vez/s, crescendo levemente); pausado, não pulsa.
 
 ## Out of Scope (Future Considerations)
 

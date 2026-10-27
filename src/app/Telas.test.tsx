@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Noticia } from '../core/types';
-import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+import { BarraTempo, BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 
 const noticia: Noticia = {
   id: 'n1', titulo: 'Título X', descricao: 'Descrição Y', saibaMais: 'Mais Z', imagem: 'content/img/n1.webp',
@@ -23,7 +23,8 @@ describe('telas', () => {
     expect(container.querySelector('img')).toHaveAttribute('src', expect.stringContaining('content/img/n1.webp'));
     expect(screen.getByText('Título X')).toBeInTheDocument();
     expect(screen.getByText('Descrição Y')).toBeInTheDocument();
-    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByRole('timer', { name: 'Tempo restante' })).toHaveTextContent('15 s');
+    expect(container.querySelector('article')).not.toHaveTextContent(/^\d+$/m);
     expect(screen.getByText(/Saiba mais/)).toBeInTheDocument();
   });
   it('AC-3.1: saiba mais aberto mostra o texto expandido', () => {
@@ -127,5 +128,37 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
     render(<TelaEspera semNoticias={false} camera="ativa" />);
     expect(screen.getByText('Aperte ▶ Iniciar (ou Enter) e fique de frente para a câmera')).toBeInTheDocument();
     expect(screen.queryByText(/Chegue mais perto/)).not.toBeInTheDocument();
+  });
+});
+
+describe('v4.0.0: barra de tempo e pulso', () => {
+  const props = { noticia, saibaMais: false, ausente: false, pontos: 0, totalMs: 15000, cardRef: { current: null }, onArrastar: () => {} };
+  it('AC-4.6: barra mostra os segundos e a fração restante', () => {
+    render(<BarraTempo restanteMs={7500} totalMs={15000} alerta={false} />);
+    const barra = screen.getByRole('timer', { name: 'Tempo restante' });
+    expect(barra).toHaveTextContent('8 s');
+    expect(barra.firstElementChild).toHaveStyle({ width: '50%' });
+  });
+  it('AC-4.7: com 5 s ou menos e cronômetro correndo, o card pulsa e a barra fica em alerta', () => {
+    const { container } = render(<TelaCard {...props} restanteMs={5000} />);
+    expect(container.querySelector('article')!.className).toMatch(/pulsando/);
+    expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+  });
+  it('AC-4.7: acima de 5 s não pulsa', () => {
+    const { container } = render(<TelaCard {...props} restanteMs={5001} />);
+    expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+    expect(screen.getByRole('timer').className).not.toMatch(/barraAlerta/);
+  });
+  it.each([['saiba mais', { saibaMais: true }], ['Volte para o centro', { ausente: true }]] as const)(
+    'AC-4.7: pausado (%s) não pulsa',
+    (_nome, pausa) => {
+      const { container } = render(<TelaCard {...props} {...pausa} restanteMs={3000} />);
+      expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+    },
+  );
+  it('card saindo não mostra a barra nem pulsa', () => {
+    const { container } = render(<TelaCard {...props} restanteMs={3000} saida="direita" />);
+    expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument();
   });
 });

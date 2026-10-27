@@ -32,23 +32,11 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
   const telaRef = useRef<Estado['tela']>('espera');
   const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
   const cfg = useConfiguracoes(podeAbrirMenu);
-  const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto);
+  const { estado, despachar, camera, videoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto);
   telaRef.current = estado.tela;
   useSons(estado, cfg.config.som);
   const cardRef = useRef<HTMLElement>(null);
-  const cardSaindoRef = useRef<HTMLElement>(null); // fora do laço de inclinação
-
-  // Inclinação do card acompanhando o corpo (AC-2.3), fora do ciclo de render.
-  useEffect(() => {
-    let raf = 0;
-    const aplicar = () => {
-      const el = cardRef.current;
-      if (el) el.style.transform = `translateX(${inclinacaoRef.current * 60}px) rotate(${inclinacaoRef.current * 12}deg)`;
-      raf = requestAnimationFrame(aplicar);
-    };
-    raf = requestAnimationFrame(aplicar);
-    return () => cancelAnimationFrame(raf);
-  }, [inclinacaoRef]);
+  const cardSaindoRef = useRef<HTMLElement>(null); // card que está saindo (AC-2.1/AC-2.2)
 
   let tela;
   switch (estado.tela) {
@@ -76,6 +64,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           ausente={estado.ausenteMs !== null}
           pontos={pontos(estado.partida)}
           modo={cfg.config.modo}
+          totalMs={cfg.config.tempoCardS * 1000}
           cardRef={cardRef}
           onArrastar={(lado) => despachar({ tipo: 'escolha', resposta: lado === 'direita' ? 'verdadeira' : 'falsa' })}
         />
@@ -94,6 +83,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
           ausente={false}
           pontos={pontos(estado.partida)}
           modo={cfg.config.modo}
+          totalMs={cfg.config.tempoCardS * 1000}
           saida={estado.resposta === 'verdadeira' ? 'direita' : 'esquerda'}
           cardRef={cardSaindoRef}
           onArrastar={() => {}}
