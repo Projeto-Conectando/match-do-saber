@@ -2869,6 +2869,7 @@ Decisões técnicas (inline, sem ADR novo):
 - [ ] Teste com pelo menos uma pessoa com baixa mobilidade, se possível. Anotar no relatório da Fase 7 o que funcionou e o que precisou de ajuste.
 - [ ] Desempenho em DevTools nos modos Mão e Cabeça: gesto confirmado em até 1 s e pelo menos 15 quadros por segundo.
 - [ ] Fechar e reabrir o jogo sem internet e conferir que o modo escolhido continua ativo (AC-9.5).
+- [ ] Com a câmera ligada e uma pessoa no quadro, abrir o menu "Modo de jogo" na tela de espera e conferir que a calibração não começa enquanto o menu está aberto (FR-9).
 
 ---
 
