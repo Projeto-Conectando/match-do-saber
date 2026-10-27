@@ -59,13 +59,14 @@ Não existe entidade de jogador nem de partida persistida (FR-1 "Must not"; Non-
 
 ---
 
-### ModoJogo (configuração do notebook, adicionado v1.1.0)
+### Configuracoes (configuração do notebook; v1.1.0, reescrito v2.0.0)
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
-| match-do-saber:modo | `'corpo' \| 'mao' \| 'cabeca'` | chave do `localStorage`; ausente ou inválido = `corpo` | Modo de jogo escolhido pelo operador |
+| match-do-saber:modo | `'corpo' \| 'mao' \| 'cabeca'` | chave do `localStorage`; ausente ou inválido = `corpo` | Modo de jogo |
+| match-do-saber:tempoCard | `'10' \| '15' \| '20' \| '25' \| '30'` | ausente ou inválido = `15` | Tempo por card, em segundos |
+| match-do-saber:som | `'ligado' \| 'desligado'` | ausente ou inválido = `ligado` | Som de escolha e resultado |
 
 **Indexes:** nenhum.
 **Relationships:** nenhuma; é configuração do estande, não dado de jogador.
-**Spec requirement:** FR-9, AC-9.4, AC-9.5.
-
+**Spec requirement:** FR-9, AC-9.4, AC-9.5, AC-9.17, FR-11.

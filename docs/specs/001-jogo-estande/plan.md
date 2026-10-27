@@ -6,12 +6,13 @@
 
 ## Global Constraints
 
-- Tempos: 15 s por card, 3 s de feedback, 2 s de calibração, 10 s de tolerância sem pessoa, 5 s de inatividade para fechar o "saiba mais"; o resumo fica na tela até Enter.
+- Tempos: 15 s por card (v2.0.0: configurável de 10 a 30 s, padrão 15 s), 3 s de feedback, 2 s de calibração, 10 s de tolerância sem pessoa, 5 s de inatividade para fechar o "saiba mais"; o resumo fica na tela até Enter.
 - 10 cards por partida, 5 verdadeiros + 5 falsos, sem repetição; completa com o outro lado; com menos de 10 notícias, usa todas.
 - Pontuação: +1 por acerto; 0 por erro ou tempo esgotado.
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
 - (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
+- (v2.0.0) Menu "Configurações": modo, tempo por card (10, 15, 20, 25, 30 s) e som (ligado/desligado). Botões "▶ Iniciar" (= Enter) e "✕ Sair" (= Esc, encerra sem resumo). Sons sintetizados: deslizar na escolha, positivo no acerto, erro no erro e no tempo esgotado. Card centralizado na vertical.
 - Todos os textos em português do Brasil.
 - Nada da câmera é gravado ou transmitido; nenhum cookie, rastreador ou analytics; o app publicado não contém credenciais.
 - Telas de referência: 1366×768 ou maior, sem cortar título ou descrição.
@@ -2563,6 +2564,8 @@ Decisões técnicas (inline, sem ADR novo):
 
 ### 8.3 Menu "Modo de jogo" e telas
 
+> **Parcialmente invalidado na v2.0.0:** o menu "Modo de jogo" (`useModoJogo`, `MenuModo`, botão "⚙ Modo de jogo: <modo>") foi reescrito na Fase 10.4 como "Configurações". As dicas por modo (AC-9.14) e a pausa da câmera com o menu aberto continuam valendo.
+
 - [ ] Acrescentar a `src/app/Telas.test.tsx`. Os imports novos são `fireEvent` de `@testing-library/react`, `vi` de `vitest` e `MenuModo`, `TelaCalibracao`. Acrescentar este bloco:
   ```tsx
   describe('modos de jogo (v1.1.0)', () => {
@@ -2873,6 +2876,881 @@ Decisões técnicas (inline, sem ADR novo):
 
 ---
 
+## Phase 10 (added v2.0.0): Configurações, Iniciar/Sair, sons e card centralizado
+
+**Implements:** FR-9 (reescrito), FR-10, FR-11, FR-1 (tempo por card e sair), FR-4 (centralização) | **Satisfies:** AC-1.2, AC-4.4, AC-4.5, AC-9.1–AC-9.6, AC-9.14, AC-9.16, AC-9.17, AC-10.1–AC-10.5, AC-11.1–AC-11.5
+**Files:** `src/core/modos.ts`, `src/core/modos.test.ts`, `src/core/partida.ts`, `src/core/partida.test.ts`, `src/core/sons.ts`, `src/core/sons.test.ts`, `src/app/audio.ts`, `src/app/useSons.ts`, `src/app/useConfiguracoes.ts` (substitui `src/app/useModoJogo.ts`, que é removido), `src/app/useJogo.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.tsx`, `src/app/App.module.css`, `tests/e2e/configuracoes.spec.ts` (substitui `tests/e2e/modos.spec.ts`, que é removido), `tests/e2e/partida-v2.spec.ts`, `docs/operacao.md`
+**Interfaces:** Consumes: `Estado`, `Evento`, `Contexto`, `reduzir`, `TEMPOS` (`src/core/partida.ts`); `criarInterpretador(modo)` (`src/core/gestos.ts`); `ModoJogo`, `MODOS`, `MODO_ROTULO`, `DICA_GESTOS`, `DICA_SAIBA_MAIS`, `Armazenamento` (`src/core/modos.ts`, Fase 8.1). Produces:
+- `src/core/modos.ts`: `Configuracoes`, `CONFIG_PADRAO`, `TEMPOS_CARD_S`, `ItemConfig`, `ITENS_CONFIG`, `ROTULO_ITEM`, `OPCOES`, `lerConfiguracoes`, `salvarConfiguracoes`, `mudarValor`, `rotuloValor`, `resumoConfiguracoes`. Saem `lerModo` e `salvarModo`.
+- `src/core/partida.ts`: `Contexto.tempoCardMs` e o evento `{ tipo: 'sair' }`.
+- `src/core/sons.ts`: `Som`, `sonsDaTransicao`.
+- `src/app/audio.ts`: `criarTocador`.
+- `src/app/useSons.ts`: `useSons`.
+- `src/app/useConfiguracoes.ts`: `useConfiguracoes`.
+- `src/app/Telas.tsx`: `MenuConfiguracoes`, `BotaoSair`.
+- `src/app/useJogo.ts`: `useJogo(noticias, config, pausado)`.
+
+Esta fase reescreve o menu da Fase 8.3, que passa a se chamar "Configurações" e reúne modo, tempo por card e som. O tempo por card deixa de ser fixo. Entram os botões "▶ Iniciar" e "✕ Sair", os sons e a centralização vertical do card. Os gestos (Fase 8.2) não mudam.
+
+Itens invalidados pela v2.0.0, que esta fase reescreve:
+- `src/app/useModoJogo.ts` → `src/app/useConfiguracoes.ts`
+- `MenuModo` → `MenuConfiguracoes`
+- o botão "⚙ Modo de jogo: <modo>" → "⚙ Configurações" mais a linha de resumo
+- `lerModo`/`salvarModo` → `lerConfiguracoes`/`salvarConfiguracoes`
+- os testes "modos de jogo (v1.1.0)" de `Telas.test.tsx` que usam `MenuModo` ou o botão antigo
+- `tests/e2e/modos.spec.ts`
+
+Decisões técnicas (inline, sem ADR novo):
+- **Sons sintetizados no navegador** (Web Audio: osciladores e envelopes), sem arquivos de áudio. Funcionam offline sem nada a mais no precache (FR-11) e não precisam de licença.
+- **"Quando tocar" fica num módulo puro** (`sonsDaTransicao(antes, depois)`), testável com o reducer. O módulo que gera o som (`audio.ts`) só é verificado em E2E, com um `AudioContext` falso, e na Fase 11.
+- **Liberação do áudio:** o navegador só libera o áudio depois de uma interação, então o `AudioContext` é criado ou retomado no primeiro `pointerdown`/`keydown`.
+- **Chaves no notebook:** as três configurações ficam em `match-do-saber:modo` (mesma chave da v1.1.0, então o modo já escolhido continua valendo), `match-do-saber:tempoCard` e `match-do-saber:som`.
+
+### 10.1 Configurações (núcleo)
+
+- [ ] Substituir `src/core/modos.test.ts`. Os testes de `lerModo`/`salvarModo` são invalidados e substituídos por estes:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import {
+    CONFIG_PADRAO, DICA_GESTOS, ITENS_CONFIG, MODOS, TEMPOS_CARD_S,
+    lerConfiguracoes, mudarValor, resumoConfiguracoes, rotuloValor, salvarConfiguracoes, type Armazenamento,
+  } from './modos';
+
+  function memoria(inicial: Record<string, string> = {}): Armazenamento & { dados: Record<string, string> } {
+    const dados = { ...inicial };
+    return { dados, getItem: (k) => dados[k] ?? null, setItem: (k, v) => { dados[k] = v; } };
+  }
+  const quebrado: Armazenamento = {
+    getItem: () => { throw new Error('bloqueado'); },
+    setItem: () => { throw new Error('bloqueado'); },
+  };
+
+  describe('configurações do estande', () => {
+    it('itens e opções', () => {
+      expect(MODOS).toEqual(['corpo', 'mao', 'cabeca']);
+      expect(TEMPOS_CARD_S).toEqual([10, 15, 20, 25, 30]);
+      expect(ITENS_CONFIG).toEqual(['modo', 'tempoCardS', 'som']);
+    });
+    it('AC-9.4: sem nada guardado, usa Corpo, 15 s e som ligado', () => {
+      expect(CONFIG_PADRAO).toEqual({ modo: 'corpo', tempoCardS: 15, som: true });
+      expect(lerConfiguracoes(memoria())).toEqual(CONFIG_PADRAO);
+      expect(lerConfiguracoes(null)).toEqual(CONFIG_PADRAO);
+    });
+    it('AC-9.5: guarda e lê as três configurações', () => {
+      const a = memoria();
+      salvarConfiguracoes(a, { modo: 'cabeca', tempoCardS: 25, som: false });
+      expect(lerConfiguracoes(a)).toEqual({ modo: 'cabeca', tempoCardS: 25, som: false });
+    });
+    it('mantém o modo guardado pela v1.1.0 (mesma chave)', () => {
+      expect(lerConfiguracoes(memoria({ 'match-do-saber:modo': 'mao' }))).toEqual({ ...CONFIG_PADRAO, modo: 'mao' });
+    });
+    it('valor inválido vale o padrão só daquele item; armazenamento bloqueado não quebra', () => {
+      const a = memoria({ 'match-do-saber:modo': 'pe', 'match-do-saber:tempoCard': '12', 'match-do-saber:som': 'desligado' });
+      expect(lerConfiguracoes(a)).toEqual({ modo: 'corpo', tempoCardS: 15, som: false });
+      expect(lerConfiguracoes(quebrado)).toEqual(CONFIG_PADRAO);
+      expect(() => salvarConfiguracoes(quebrado, CONFIG_PADRAO)).not.toThrow();
+    });
+    it('FR-9: guarda só as três chaves', () => {
+      const a = memoria();
+      salvarConfiguracoes(a, { modo: 'mao', tempoCardS: 20, som: true });
+      expect(a.dados).toEqual({ 'match-do-saber:modo': 'mao', 'match-do-saber:tempoCard': '20', 'match-do-saber:som': 'ligado' });
+    });
+    it('AC-9.17: ←/→ mudam o valor sem passar dos limites', () => {
+      const c = { ...CONFIG_PADRAO, tempoCardS: 10 };
+      expect(mudarValor(c, 'tempoCardS', -1).tempoCardS).toBe(10);
+      expect(mudarValor(c, 'tempoCardS', 1).tempoCardS).toBe(15);
+      expect(mudarValor({ ...c, tempoCardS: 30 }, 'tempoCardS', 1).tempoCardS).toBe(30);
+      expect(mudarValor(CONFIG_PADRAO, 'modo', 1).modo).toBe('mao');
+      expect(mudarValor(CONFIG_PADRAO, 'modo', -1).modo).toBe('corpo');
+      expect(mudarValor(CONFIG_PADRAO, 'som', 1).som).toBe(false);
+    });
+    it('AC-9.2: rótulos e resumo', () => {
+      expect(rotuloValor('tempoCardS', 20)).toBe('20 s');
+      expect(rotuloValor('som', true)).toBe('Ligado');
+      expect(rotuloValor('modo', 'cabeca')).toBe('Cabeça');
+      expect(resumoConfiguracoes({ modo: 'mao', tempoCardS: 20, som: false })).toBe('Modo: Mão · Tempo por card: 20 s · Som: desligado');
+    });
+    it('AC-9.14: dicas de cada modo continuam iguais', () => {
+      expect(DICA_GESTOS.mao).toBe('Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais');
+      expect(DICA_GESTOS.cabeca).toBe('Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais');
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/modos.test.ts`. Esperado: FAIL, porque as exportações novas ainda não existem.
+- [ ] Substituir `src/core/modos.ts`:
+  ```ts
+  export type ModoJogo = 'corpo' | 'mao' | 'cabeca';
+
+  export const MODOS: readonly ModoJogo[] = ['corpo', 'mao', 'cabeca'];
+  export const MODO_PADRAO: ModoJogo = 'corpo';
+
+  export const MODO_ROTULO: Record<ModoJogo, string> = { corpo: 'Corpo', mao: 'Mão', cabeca: 'Cabeça' };
+
+  export const DICA_GESTOS: Record<ModoJogo, string> = {
+    corpo: 'Direita: é verdade · Esquerda: é falsa · Duas mãos para cima: saiba mais',
+    mao: 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais',
+    cabeca: 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais',
+  };
+
+  export const DICA_SAIBA_MAIS: Record<ModoJogo, string> = {
+    corpo: '🙌 Saiba mais: levante as duas mãos (ou ↑)',
+    mao: '🙌 Saiba mais: levante as duas mãos (ou ↑)',
+    cabeca: 'Saiba mais: levante o queixo (ou ↑)',
+  };
+
+  export const TEMPOS_CARD_S: readonly number[] = [10, 15, 20, 25, 30];
+
+  export interface Configuracoes { modo: ModoJogo; tempoCardS: number; som: boolean }
+  export const CONFIG_PADRAO: Configuracoes = { modo: MODO_PADRAO, tempoCardS: 15, som: true };
+
+  export type ItemConfig = keyof Configuracoes;
+  export const ITENS_CONFIG: readonly ItemConfig[] = ['modo', 'tempoCardS', 'som'];
+  export const ROTULO_ITEM: Record<ItemConfig, string> = { modo: 'Modo de jogo', tempoCardS: 'Tempo por card', som: 'Som' };
+  export const OPCOES: { [K in ItemConfig]: readonly Configuracoes[K][] } = {
+    modo: MODOS,
+    tempoCardS: TEMPOS_CARD_S,
+    som: [true, false],
+  };
+
+  export interface Armazenamento {
+    getItem(chave: string): string | null;
+    setItem(chave: string, valor: string): void;
+  }
+
+  const CHAVES: Record<ItemConfig, string> = {
+    modo: 'match-do-saber:modo',
+    tempoCardS: 'match-do-saber:tempoCard',
+    som: 'match-do-saber:som',
+  };
+
+  function ler(a: Armazenamento | null, chave: string): string | null {
+    try {
+      return a?.getItem(chave) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  export function lerConfiguracoes(a: Armazenamento | null): Configuracoes {
+    const modo = ler(a, CHAVES.modo);
+    const tempo = Number(ler(a, CHAVES.tempoCardS));
+    const som = ler(a, CHAVES.som);
+    return {
+      modo: MODOS.includes(modo as ModoJogo) ? (modo as ModoJogo) : CONFIG_PADRAO.modo,
+      tempoCardS: TEMPOS_CARD_S.includes(tempo) ? tempo : CONFIG_PADRAO.tempoCardS,
+      som: som === 'ligado' ? true : som === 'desligado' ? false : CONFIG_PADRAO.som,
+    };
+  }
+
+  export function salvarConfiguracoes(a: Armazenamento | null, c: Configuracoes): void {
+    try {
+      a?.setItem(CHAVES.modo, c.modo);
+      a?.setItem(CHAVES.tempoCardS, String(c.tempoCardS));
+      a?.setItem(CHAVES.som, c.som ? 'ligado' : 'desligado');
+    } catch {
+      // Armazenamento bloqueado: as escolhas valem até o jogo ser fechado.
+    }
+  }
+
+  export function mudarValor(c: Configuracoes, item: ItemConfig, passo: -1 | 1): Configuracoes {
+    const lista = OPCOES[item] as readonly unknown[];
+    const i = lista.indexOf(c[item]);
+    const j = Math.max(0, Math.min(lista.length - 1, i + passo));
+    return { ...c, [item]: lista[j] } as Configuracoes;
+  }
+
+  export function rotuloValor(item: ItemConfig, valor: Configuracoes[ItemConfig]): string {
+    if (item === 'modo') return MODO_ROTULO[valor as ModoJogo];
+    if (item === 'tempoCardS') return `${valor} s`;
+    return valor ? 'Ligado' : 'Desligado';
+  }
+
+  export function resumoConfiguracoes(c: Configuracoes): string {
+    return `Modo: ${MODO_ROTULO[c.modo]} · Tempo por card: ${c.tempoCardS} s · Som: ${c.som ? 'ligado' : 'desligado'}`;
+  }
+
+  /** @deprecated v2.0.0: mantido só até a Fase 10.4 remover `useModoJogo`. */
+  export function lerModo(a: Armazenamento | null): ModoJogo {
+    return lerConfiguracoes(a).modo;
+  }
+
+  /** @deprecated v2.0.0: mantido só até a Fase 10.4 remover `useModoJogo`. */
+  export function salvarModo(a: Armazenamento | null, modo: ModoJogo): void {
+    try {
+      a?.setItem(CHAVES.modo, modo);
+    } catch {
+      // Armazenamento bloqueado.
+    }
+  }
+  ```
+- [ ] Rodar `npx vitest run` e `npx tsc --noEmit`. Esperado: PASS e sem erros: `lerModo`/`salvarModo` continuam existindo, só para o app atual compilar até a 10.4.
+- [ ] Commit: `feat(config): settings model for mode, card time and sound (Phase 10.1: Configurações)`
+
+### 10.2 Partida: tempo por card configurável e Sair
+
+- [ ] Em `src/core/partida.test.ts`:
+  - Trocar o helper `ctx` para incluir o tempo padrão. A intenção dos testes existentes não muda:
+    ```ts
+    const ctx = (over: Partial<Contexto> = {}): Contexto => ({
+      noticias, rng: () => 0.5, cameraAtiva: true, tempoCardMs: TEMPOS.cardMs, ...over,
+    });
+    ```
+  - Acrescentar o bloco:
+    ```ts
+    describe('v2.0.0: tempo por card e sair', () => {
+      it('AC-9.17/AC-1.2/AC-4.4: o tempo configurado vale para todos os cards', () => {
+        const c = ctx({ tempoCardMs: 20000 });
+        const s0 = rodar(ESTADO_INICIAL, [{ tipo: 'enter' }], c);
+        expect(s0).toMatchObject({ tela: 'card', restanteMs: 20000 });
+        const s1 = rodar(s0, [{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
+        expect(s1).toMatchObject({ tela: 'card', indice: 1, restanteMs: 20000 });
+        expect(rodar(s1, [tick(10000), tick(9999)], c).tela).toBe('card');
+        expect(rodar(s1, [tick(10000), tick(10000)], c).tela).toBe('feedback');
+      });
+      it.each(['calibracao', 'card', 'saibaMais', 'feedback', 'resumo'] as const)('AC-10.3: sair em %s volta à espera', (onde) => {
+        const c = ctx();
+        let s: Estado;
+        if (onde === 'calibracao') s = reduzir(ESTADO_INICIAL, tick(16, lado), c);
+        else if (onde === 'card') s = emCard(c);
+        else if (onde === 'saibaMais') s = reduzir(emCard(c), { tipo: 'saibaMais' }, c);
+        else if (onde === 'feedback') s = reduzir(emCard(c), { tipo: 'escolha', resposta: 'falsa' }, c);
+        else {
+          s = emCard(c);
+          for (let i = 0; i < 3; i++) s = rodar(s, [{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
+        }
+        expect(s.tela).toBe(onde === 'saibaMais' ? 'card' : onde);
+        expect(reduzir(s, { tipo: 'sair' }, c)).toEqual(ESTADO_INICIAL);
+      });
+      it('AC-10.4: sair na espera não muda nada', () => {
+        expect(reduzir(ESTADO_INICIAL, { tipo: 'sair' }, ctx())).toBe(ESTADO_INICIAL);
+      });
+    });
+    ```
+    (`Estado` entra no import de tipos de `./partida`. `tick`, `lado`, `rodar` e `emCard` são os helpers que já existem no arquivo.)
+- [ ] Rodar `npx vitest run src/core/partida.test.ts`. Esperado: FAIL (`tempoCardMs` ignorado; `sair` não existe).
+- [ ] Alterar `src/core/partida.ts`:
+  ```ts
+  export type Evento =
+    | { tipo: 'tick'; dtMs: number; presenca: Presenca | null }
+    | { tipo: 'escolha'; resposta: Veredito }
+    | { tipo: 'saibaMais' }
+    | { tipo: 'enter' }
+    | { tipo: 'sair' };
+
+  /** `tempoCardMs`: tempo por card configurado (FR-9); sem valor, vale `TEMPOS.cardMs`. */
+  export interface Contexto { noticias: Noticia[]; rng: () => number; cameraAtiva: boolean; tempoCardMs?: number }
+
+  function card(partida: Partida, indice: number, tempoCardMs = TEMPOS.cardMs): EstadoCard {
+    return { tela: 'card', partida, indice, restanteMs: tempoCardMs, saibaMais: false, saibaMaisOciosoMs: 0, ausenteMs: null };
+  }
+
+  function iniciarPartida(ctx: Contexto, entrada: Entrada): Estado {
+    const cards = sortear(ctx.noticias, ctx.rng);
+    return cards.length === 0 ? ESTADO_INICIAL : card({ cards, resultados: [], entrada }, 0, ctx.tempoCardMs);
+  }
+  ```
+  No início de `reduzir`, antes do `switch`:
+  ```ts
+  // "✕ Sair" / Esc (FR-10): encerra na hora, sem resumo; na espera não faz nada.
+  if (evento.tipo === 'sair') return estado.tela === 'espera' ? estado : ESTADO_INICIAL;
+  ```
+  No `case 'feedback'`, trocar `card(estado.partida, proximo)` por `card(estado.partida, proximo, ctx.tempoCardMs)`.
+- [ ] Rodar `npx vitest run` e `npx tsc --noEmit`. Esperado: PASS e sem erros, porque `tempoCardMs` é opcional e o app atual continua compilando.
+- [ ] Commit: `feat(partida): configurable card time and quit event (Phase 10.2: Partida)`
+
+### 10.3 Sons
+
+- [ ] Escrever `src/core/sons.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { ESTADO_INICIAL, TEMPOS, reduzir, type Contexto, type Estado, type Evento } from './partida';
+  import { sonsDaTransicao, type Som } from './sons';
+  import type { Noticia } from './types';
+
+  const noticia: Noticia = {
+    id: 'v1', veredito: 'verdadeira', tecnica: 'fonte', titulo: '', descricao: '', saibaMais: '', imagem: '', explicacao: '', fonteUrl: '',
+  };
+  const ctx: Contexto = { noticias: [noticia], rng: () => 0.5, cameraAtiva: false, tempoCardMs: TEMPOS.cardMs };
+  const tick = (dtMs: number): Evento => ({ tipo: 'tick', dtMs, presenca: null });
+
+  /** Aplica os eventos um a um e junta os sons de cada transição. */
+  function sons(eventos: Evento[], inicio: Estado = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, ctx)): Som[] {
+    let s = inicio;
+    const out: Som[] = [];
+    for (const e of eventos) {
+      const n = reduzir(s, e, ctx);
+      out.push(...sonsDaTransicao(s, n));
+      s = n;
+    }
+    return out;
+  }
+
+  describe('sonsDaTransicao', () => {
+    it('AC-11.1/AC-11.2: escolha certa = deslizar e, depois da saída do card, acerto', () => {
+      expect(sons([{ tipo: 'escolha', resposta: 'verdadeira' }])).toEqual(['deslizar']);
+      expect(sons([{ tipo: 'escolha', resposta: 'verdadeira' }, tick(100), tick(100)])).toEqual(['deslizar']);
+      expect(sons([{ tipo: 'escolha', resposta: 'verdadeira' }, tick(100), tick(100), tick(100)])).toEqual(['deslizar', 'acerto']);
+    });
+    it('AC-11.3: escolha errada = deslizar e erro', () => {
+      expect(sons([{ tipo: 'escolha', resposta: 'falsa' }, tick(TEMPOS.saidaMs)])).toEqual(['deslizar', 'erro']);
+    });
+    it('AC-11.3: tempo esgotado = erro, sem deslizar', () => {
+      expect(sons([tick(10000), tick(5000)])).toEqual(['erro']);
+    });
+    it('nada toca no resto do feedback nem fora dele', () => {
+      expect(sons([{ tipo: 'escolha', resposta: 'verdadeira' }, tick(TEMPOS.saidaMs), tick(1000), tick(1000)])).toEqual(['deslizar', 'acerto']);
+      expect(sons([tick(1000), { tipo: 'saibaMais' }, tick(1000)])).toEqual([]);
+      const s = reduzir(ESTADO_INICIAL, { tipo: 'enter' }, ctx);
+      expect(sonsDaTransicao(s, s)).toEqual([]);
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/sons.test.ts`. Esperado: FAIL (módulo inexistente).
+- [ ] Implementar `src/core/sons.ts`:
+  ```ts
+  import { TEMPOS, type Estado } from './partida';
+
+  export type Som = 'deslizar' | 'acerto' | 'erro';
+
+  /** Sons a tocar na passagem de `antes` para `depois` (FR-11). */
+  export function sonsDaTransicao(antes: Estado, depois: Estado): Som[] {
+    if (depois.tela !== 'feedback') return [];
+    const resultado: Som = depois.partida.resultados[depois.indice] === 'acerto' ? 'acerto' : 'erro';
+    if (antes.tela === 'card') return depois.resposta === null ? [resultado] : ['deslizar'];
+    // Depois da saída do card (TEMPOS.saidaMs), o resultado aparece: toca uma vez.
+    const terminouSaida =
+      antes.tela === 'feedback' &&
+      antes.indice === depois.indice &&
+      depois.resposta !== null &&
+      antes.restanteMs > TEMPOS.feedbackMs &&
+      depois.restanteMs <= TEMPOS.feedbackMs;
+    return terminouSaida ? [resultado] : [];
+  }
+  ```
+- [ ] Rodar `npx vitest run src/core/sons.test.ts`. Esperado: PASS.
+- [ ] Criar `src/app/audio.ts` (gerador de som, verificado em E2E com um `AudioContext` falso e na Fase 11):
+  ```ts
+  import type { Som } from '../core/sons';
+
+  interface Nota { freq: number; ate?: number; duracao: number; tipo: OscillatorType; volume: number; atraso?: number }
+
+  const SONS: Record<Som, Nota[]> = {
+    deslizar: [{ freq: 900, ate: 300, duracao: 0.18, tipo: 'sine', volume: 0.15 }],
+    acerto: [
+      { freq: 660, duracao: 0.12, tipo: 'triangle', volume: 0.2 },
+      { freq: 990, duracao: 0.2, tipo: 'triangle', volume: 0.2, atraso: 0.1 },
+    ],
+    erro: [{ freq: 220, ate: 140, duracao: 0.35, tipo: 'sawtooth', volume: 0.12 }],
+  };
+
+  export interface Tocador { tocar(som: Som): void; desbloquear(): void }
+
+  export function criarTocador(): Tocador {
+    let ctx: AudioContext | null = null;
+    const obter = (): AudioContext | null => {
+      if (ctx) return ctx;
+      const C = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!C) return null;
+      try {
+        ctx = new C();
+      } catch {
+        return null;
+      }
+      return ctx;
+    };
+    return {
+      // O navegador só libera o áudio depois de uma interação (clique ou tecla).
+      desbloquear() {
+        const c = obter();
+        if (c?.state === 'suspended') c.resume().catch(() => {});
+      },
+      tocar(som) {
+        const c = obter();
+        if (!c) return;
+        for (const n of SONS[som]) {
+          const inicio = c.currentTime + (n.atraso ?? 0);
+          const osc = c.createOscillator();
+          const ganho = c.createGain();
+          osc.type = n.tipo;
+          osc.frequency.setValueAtTime(n.freq, inicio);
+          if (n.ate) osc.frequency.exponentialRampToValueAtTime(n.ate, inicio + n.duracao);
+          ganho.gain.setValueAtTime(n.volume, inicio);
+          ganho.gain.exponentialRampToValueAtTime(0.001, inicio + n.duracao);
+          osc.connect(ganho);
+          ganho.connect(c.destination);
+          osc.start(inicio);
+          osc.stop(inicio + n.duracao);
+        }
+      },
+    };
+  }
+  ```
+- [ ] Criar `src/app/useSons.ts`:
+  ```ts
+  import { useEffect, useMemo, useRef } from 'react';
+  import type { Estado } from '../core/partida';
+  import { sonsDaTransicao } from '../core/sons';
+  import { criarTocador } from './audio';
+
+  /** Toca os sons de FR-11 a cada transição de estado, se `ligado`. */
+  export function useSons(estado: Estado, ligado: boolean) {
+    const tocador = useMemo(criarTocador, []);
+    const anterior = useRef(estado);
+
+    useEffect(() => {
+      const desbloquear = () => tocador.desbloquear();
+      window.addEventListener('pointerdown', desbloquear, { capture: true });
+      window.addEventListener('keydown', desbloquear, { capture: true });
+      return () => {
+        window.removeEventListener('pointerdown', desbloquear, { capture: true });
+        window.removeEventListener('keydown', desbloquear, { capture: true });
+      };
+    }, [tocador]);
+
+    useEffect(() => {
+      const sons = sonsDaTransicao(anterior.current, estado);
+      anterior.current = estado;
+      if (ligado) for (const som of sons) tocador.tocar(som);
+    }, [estado, ligado, tocador]);
+  }
+  ```
+- [ ] Rodar `npx vitest run src/core`. Esperado: PASS.
+- [ ] Commit: `feat(sons): choice and result sounds synthesized in the browser (Phase 10.3: Sons)`
+
+### 10.4 Menu Configurações, Iniciar/Sair e card centralizado
+
+- [ ] Em `src/app/Telas.test.tsx`, remover os testes invalidados do bloco "modos de jogo (v1.1.0)": "AC-9.1/AC-9.2: espera mostra o modo ativo…" e "AC-9.1: menu lista os três modos…". Manter os de AC-9.14. Acrescentar:
+  ```tsx
+  describe('v2.0.0: configurações, iniciar e sair', () => {
+    it('AC-9.2/AC-10.1: espera mostra o resumo, Iniciar e Configurações', () => {
+      const iniciar = vi.fn();
+      const abrir = vi.fn();
+      render(<TelaEspera semNoticias={false} camera="ativa" config={{ modo: 'mao', tempoCardS: 20, som: false }} onAbrirMenu={abrir} onIniciar={iniciar} />);
+      expect(screen.getByText('Modo: Mão · Tempo por card: 20 s · Som: desligado')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: '▶ Iniciar' }));
+      fireEvent.click(screen.getByRole('button', { name: '⚙ Configurações' }));
+      expect(iniciar).toHaveBeenCalledOnce();
+      expect(abrir).toHaveBeenCalledOnce();
+    });
+    it('AC-10.2: sem notícias, Iniciar fica desativado', () => {
+      render(<TelaEspera semNoticias camera="ativa" />);
+      expect(screen.getByRole('button', { name: '▶ Iniciar' })).toBeDisabled();
+    });
+    it('AC-9.1: menu mostra os três itens com os valores atuais marcados', () => {
+      const definir = vi.fn();
+      render(<MenuConfiguracoes config={{ modo: 'corpo', tempoCardS: 15, som: true }} itemDestacado={0} onDefinir={definir} onFechar={() => {}} />);
+      expect(screen.getByRole('dialog', { name: 'Configurações' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Modo de jogo' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Tempo por card' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Som' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '◉ Corpo' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: '◉ 15 s' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: '◉ Ligado' })).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.click(screen.getByRole('button', { name: '○ 25 s' }));
+      expect(definir).toHaveBeenCalledWith({ modo: 'corpo', tempoCardS: 25, som: true });
+    });
+    it('AC-10.5: botão Sair tem nome acessível "Sair da partida"', () => {
+      const sair = vi.fn();
+      render(<BotaoSair onSair={sair} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Sair da partida' }));
+      expect(sair).toHaveBeenCalledOnce();
+    });
+  });
+  ```
+  (`MenuConfiguracoes` e `BotaoSair` entram no import de `./Telas`; `MenuModo` sai.)
+- [ ] Remover `tests/e2e/modos.spec.ts` e escrever `tests/e2e/configuracoes.spec.ts`:
+  ```ts
+  import { expect, test, type Page } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+  const DICA_MAO = 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais';
+
+  async function abrirSemCamera(page: Page) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto('/');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  }
+
+  test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC-9.1–9.6, 9.14, 9.17)', async ({ page }) => {
+    await abrirSemCamera(page);
+    const menu = page.getByRole('dialog', { name: 'Configurações' });
+    const resumo = (t: string) => page.getByText(t, { exact: true });
+    await expect(resumo('Modo: Corpo · Tempo por card: 15 s · Som: ligado')).toBeVisible();   // AC-9.4
+
+    await page.keyboard.press('m');
+    await expect(menu).toBeVisible();                                                       // AC-9.1
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();                                                        // AC-9.3
+
+    await page.keyboard.press('m');
+    await page.keyboard.press('ArrowRight');                                                // modo → Mão
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');                                                // 15 → 20 s
+    await page.keyboard.press('Enter');                                                     // fecha (AC-9.3)
+    await expect(menu).toBeHidden();
+    await expect(page.locator('article')).toHaveCount(0);                                   // Enter do menu não inicia
+    await expect(resumo('Modo: Mão · Tempo por card: 20 s · Som: ligado')).toBeVisible();   // AC-9.2
+
+    await page.keyboard.press('m');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowLeft');                                                 // 20 → 15
+    await page.keyboard.press('ArrowLeft');                                                 // 15 → 10
+    await page.keyboard.press('ArrowLeft');                                                 // 10 fica (AC-9.17)
+    await page.keyboard.press('m');                                                         // M também fecha
+    await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado')).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado')).toBeVisible();   // AC-9.5
+
+    await page.keyboard.press('Enter');
+    const card = page.locator('article');
+    await expect(card).toBeVisible();
+    await expect(card.getByText('10', { exact: true })).toBeVisible();                       // AC-9.17
+    const dica = page.getByText(DICA_MAO);
+    await expect(dica).toBeVisible();                                                       // AC-9.14
+    const [a, b] = [(await dica.boundingBox())!, (await card.boundingBox())!];
+    expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true); // FR-4
+    await page.keyboard.press('m');
+    await expect(menu).toHaveCount(0);                                                      // AC-9.6
+  });
+
+  test('menu pelo mouse (AC-9.2) e setas no modo Cabeça (AC-9.16)', async ({ page }) => {
+    await abrirSemCamera(page);
+    await page.getByRole('button', { name: '⚙ Configurações' }).click();
+    const menu = page.getByRole('dialog', { name: 'Configurações' });
+    await menu.getByRole('button', { name: '○ Cabeça' }).click();
+    await expect(menu.getByRole('button', { name: '◉ Cabeça' })).toBeVisible();
+    await menu.getByRole('button', { name: 'Fechar' }).click();
+    await expect(menu).toBeHidden();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Saiba mais: levante o queixo (ou ↑)')).toBeVisible();
+    await expect(menu).toHaveCount(0);
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+  });
+  ```
+- [ ] Escrever `tests/e2e/partida-v2.spec.ts`:
+  ```ts
+  import { expect, test, type Page } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+
+  /** Sem câmera e com um AudioContext falso que conta os osciladores tocados. */
+  async function abrir(page: Page) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+      const w = window as unknown as { __sons: number; AudioContext: unknown };
+      w.__sons = 0;
+      class Param { setValueAtTime() {} exponentialRampToValueAtTime() {} }
+      class No { connect() {} }
+      class Osc extends No { type = 'sine'; frequency = new Param(); start() { w.__sons++; } stop() {} }
+      class Ganho extends No { gain = new Param(); }
+      class Ctx {
+        state = 'running'; currentTime = 0; destination = {};
+        resume() { return Promise.resolve(); }
+        createOscillator() { return new Osc(); }
+        createGain() { return new Ganho(); }
+      }
+      w.AudioContext = Ctx;
+    });
+    await page.goto('/');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  }
+  const sonsTocados = (page: Page) => page.evaluate(() => (window as unknown as { __sons: number }).__sons);
+
+  test('AC-10.1/AC-10.3: Iniciar começa; Sair (clique) e Esc encerram sem resumo', async ({ page }) => {
+    await abrir(page);
+    await page.getByRole('button', { name: '▶ Iniciar' }).click();
+    await expect(page.locator('article')).toBeVisible();
+    await page.getByRole('button', { name: 'Sair da partida' }).click();
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await expect(page.locator('article')).toHaveCount(0);
+
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+    await expect(page.getByText(/^\d+ de \d+$/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Sair da partida' })).toHaveCount(0);
+  });
+
+  test('AC-10.2: sem notícias, Iniciar desativado', async ({ page }) => {
+    await page.route('**/content/noticias.json', (r) => r.fulfill({ json: { versao: 'x', noticias: [] } }));
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: '▶ Iniciar' })).toBeDisabled();
+  });
+
+  test('AC-10.5: Sair não cobre o card', async ({ page }) => {
+    await abrir(page);
+    await page.keyboard.press('Enter');
+    const [a, b] = [(await page.getByRole('button', { name: 'Sair da partida' }).boundingBox())!, (await page.locator('article').boundingBox())!];
+    expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
+  });
+
+  for (const vp of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
+    test(`AC-4.5: card centralizado na vertical em ${vp.width}×${vp.height}`, async ({ page }) => {
+      await page.setViewportSize(vp);
+      await abrir(page);
+      await page.keyboard.press('Enter');
+      const box = (await page.locator('article').boundingBox())!;
+      expect(Math.abs(box.y + box.height / 2 - vp.height / 2)).toBeLessThanOrEqual(8);
+    });
+  }
+
+  test('AC-11.1–11.3: som ligado toca na escolha e no resultado', async ({ page }) => {
+    await abrir(page);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+    await expect.poll(() => sonsTocados(page)).toBeGreaterThanOrEqual(2);
+  });
+
+  test('AC-11.4: som desligado não toca nada', async ({ page }) => {
+    await abrir(page);
+    await page.keyboard.press('m');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');                       // Som → Desligado
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('Modo: Corpo · Tempo por card: 15 s · Som: desligado', { exact: true })).toBeVisible();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+    await page.waitForTimeout(500);
+    expect(await sonsTocados(page)).toBe(0);
+  });
+  ```
+- [ ] Rodar `npm run fixture && npx vite build && npx playwright test tests/e2e/configuracoes.spec.ts tests/e2e/partida-v2.spec.ts`. Esperado: FAIL. Se `vite build` falhar pelos tipos, é esperado: o Vite não checa tipos, mas confirme que o FAIL vem das asserções e não do build.
+- [ ] Criar `src/app/useConfiguracoes.ts`, remover `src/app/useModoJogo.ts` e remover de `src/core/modos.ts` as funções `lerModo`/`salvarModo` marcadas como `@deprecated`:
+  ```ts
+  import { useCallback, useEffect, useMemo, useState } from 'react';
+  import {
+    ITENS_CONFIG, lerConfiguracoes, mudarValor, salvarConfiguracoes, type Armazenamento, type Configuracoes,
+  } from '../core/modos';
+
+  function armazenamentoDoNavegador(): Armazenamento | null {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Configurações do estande (FR-9). `podeAbrir` diz se o jogo está na tela de espera. */
+  export function useConfiguracoes(podeAbrir: () => boolean) {
+    const armazenamento = useMemo(armazenamentoDoNavegador, []);
+    const [config, setConfig] = useState<Configuracoes>(() => lerConfiguracoes(armazenamento));
+    const [menu, setMenu] = useState({ aberto: false, item: 0 });
+
+    const fechar = useCallback(() => setMenu({ aberto: false, item: 0 }), []);
+    const abrir = useCallback(() => {
+      if (podeAbrir()) setMenu({ aberto: true, item: 0 });
+    }, [podeAbrir]);
+    const definir = useCallback((c: Configuracoes) => {
+      setConfig(c);
+      salvarConfiguracoes(armazenamento, c);
+    }, [armazenamento]);
+
+    // Captura no window: com o menu aberto, nenhuma tecla chega ao jogo (Enter não inicia, Esc não "sai").
+    useEffect(() => {
+      const tecla = (e: KeyboardEvent) => {
+        const m = e.key === 'm' || e.key === 'M';
+        if (!menu.aberto) {
+          if (m && podeAbrir()) { e.preventDefault(); abrir(); }
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const n = ITENS_CONFIG.length;
+        const item = ITENS_CONFIG[menu.item]!;
+        if (m || e.key === 'Escape' || e.key === 'Enter') fechar();
+        else if (e.key === 'ArrowDown') setMenu((s) => ({ ...s, item: (s.item + 1) % n }));
+        else if (e.key === 'ArrowUp') setMenu((s) => ({ ...s, item: (s.item + n - 1) % n }));
+        else if (e.key === 'ArrowLeft') definir(mudarValor(config, item, -1));
+        else if (e.key === 'ArrowRight') definir(mudarValor(config, item, 1));
+      };
+      window.addEventListener('keydown', tecla, { capture: true });
+      return () => window.removeEventListener('keydown', tecla, { capture: true });
+    }, [menu, config, podeAbrir, abrir, fechar, definir]);
+
+    return { config, menuAberto: menu.aberto, itemDestacado: menu.item, abrir, fechar, definir };
+  }
+  ```
+- [ ] Alterar `src/app/useJogo.ts`:
+  1. Assinatura, contexto e interpretador:
+     ```ts
+     import { CONFIG_PADRAO, type Configuracoes } from '../core/modos';
+     // ...
+     export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADRAO, pausado = false) {
+       const [camera, setCamera] = useState<StatusCamera>('carregando');
+       const ctx = useRef<Contexto>({ noticias, rng: Math.random, cameraAtiva: false, tempoCardMs: config.tempoCardS * 1000 });
+       ctx.current = { noticias, rng: Math.random, cameraAtiva: camera === 'ativa', tempoCardMs: config.tempoCardS * 1000 };
+       // ...
+       const interp = useRef(criarInterpretador(config.modo));
+       // ...
+       useEffect(() => {
+         interp.current = criarInterpretador(config.modo);
+       }, [config.modo]);
+     ```
+     (Sai o parâmetro `modo` e o `import type { ModoJogo }`.)
+  2. Em `EVENTO_DA_TECLA`, acrescentar `Escape: { tipo: 'sair' }` (FR-10).
+- [ ] Alterar `src/app/Telas.tsx`:
+  - Imports de `../core/modos`: `CONFIG_PADRAO`, `DICA_GESTOS`, `DICA_SAIBA_MAIS`, `ITENS_CONFIG`, `OPCOES`, `ROTULO_ITEM`, `resumoConfiguracoes`, `rotuloValor`, `type Configuracoes`, `type ModoJogo`. Saem `MODO_ROTULO` e `MODOS`.
+  - Substituir `TelaEspera` e `MenuModo`, e acrescentar `BotaoSair`:
+  ```tsx
+  export function TelaEspera({ semNoticias, camera, config = CONFIG_PADRAO, onAbrirMenu = () => {}, onIniciar = () => {} }: {
+    semNoticias: boolean;
+    camera: StatusCamera;
+    config?: Configuracoes;
+    onAbrirMenu?: () => void;
+    onIniciar?: () => void;
+  }) {
+    return (
+      <main className={s.centro}>
+        <h1 className={s.logo}>Match do Saber</h1>
+        {semNoticias ? (
+          <p className={s.aviso}>Nenhuma notícia publicada</p>
+        ) : camera === 'negada' || camera === 'indisponivel' ? (
+          <p className={s.aviso}>Câmera desativada — jogue pelas setas (Enter para começar)</p>
+        ) : (
+          <p className={s.chamada}>Chegue mais perto e fique de frente para a câmera para jogar</p>
+        )}
+        <div className={s.botoes}>
+          {/* Os botões perdem o foco no clique: um Enter depois não deve reativá-los. */}
+          <button type="button" className={s.botaoIniciar} disabled={semNoticias} onClick={(e) => { e.currentTarget.blur(); onIniciar(); }}>
+            ▶ Iniciar
+          </button>
+          <button type="button" className={s.botaoModo} onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}>
+            ⚙ Configurações
+          </button>
+        </div>
+        <p className={s.dica}>{resumoConfiguracoes(config)}</p>
+      </main>
+    );
+  }
+
+  export function MenuConfiguracoes({ config, itemDestacado, onDefinir, onFechar }: {
+    config: Configuracoes;
+    itemDestacado: number;
+    onDefinir: (c: Configuracoes) => void;
+    onFechar: () => void;
+  }) {
+    return (
+      <div className={s.sobreposicao} role="dialog" aria-modal="true" aria-label="Configurações">
+        <div className={s.menu}>
+          <h2>Configurações</h2>
+          <ul>
+            {ITENS_CONFIG.map((item, i) => (
+              <li key={item} className={i === itemDestacado ? s.destacado : undefined}>
+                <p className={s.rotuloItem} id={`cfg-${item}`}>{ROTULO_ITEM[item]}</p>
+                <div className={s.opcoes} role="group" aria-labelledby={`cfg-${item}`}>
+                  {(OPCOES[item] as readonly Configuracoes[typeof item][]).map((valor) => {
+                    const ativo = config[item] === valor;
+                    return (
+                      <button
+                        key={String(valor)}
+                        type="button"
+                        aria-pressed={ativo}
+                        onClick={() => onDefinir({ ...config, [item]: valor } as Configuracoes)}
+                      >
+                        {`${ativo ? '◉' : '○'} ${rotuloValor(item, valor)}`}
+                      </button>
+                    );
+                  })}
+                </div>
+                {item === 'modo' && <p className={s.dica}>{DICA_GESTOS[config.modo]}</p>}
+              </li>
+            ))}
+          </ul>
+          <p className={s.dica}>↑/↓ escolhem o item · ←/→ mudam o valor · Esc ou Enter fecham</p>
+          <button type="button" onClick={onFechar}>Fechar</button>
+        </div>
+      </div>
+    );
+  }
+
+  export function BotaoSair({ onSair }: { onSair: () => void }) {
+    return (
+      <button type="button" className={s.sair} aria-label="Sair da partida" onClick={(e) => { e.currentTarget.blur(); onSair(); }}>
+        ✕ Sair
+      </button>
+    );
+  }
+  ```
+- [ ] Alterar `src/app/App.tsx`, função `Jogo`:
+  ```tsx
+  import { useConfiguracoes } from './useConfiguracoes';
+  import { useSons } from './useSons';
+  import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
+  // ...
+  function Jogo({ noticias }: { noticias: Noticia[] }) {
+    const telaRef = useRef<Estado['tela']>('espera');
+    const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
+    const cfg = useConfiguracoes(podeAbrirMenu);
+    const { estado, despachar, camera, videoRef, inclinacaoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto);
+    telaRef.current = estado.tela;
+    useSons(estado, cfg.config.som);
+    // ...(cardRef, cardSaindoRef e laço de inclinação inalterados)...
+  ```
+  - Nas telas: `TelaEspera` recebe `config={cfg.config} onAbrirMenu={cfg.abrir} onIniciar={() => despachar({ tipo: 'enter' })}`. `TelaCalibracao` e os dois `TelaCard` recebem `modo={cfg.config.modo}`.
+  - No retorno, trocar o bloco do `MenuModo` por:
+  ```tsx
+  {estado.tela !== 'espera' && <BotaoSair onSair={() => despachar({ tipo: 'sair' })} />}
+  {cfg.menuAberto && (
+    <MenuConfiguracoes config={cfg.config} itemDestacado={cfg.itemDestacado} onDefinir={cfg.definir} onFechar={cfg.fechar} />
+  )}
+  ```
+- [ ] Alterar `src/app/App.module.css`:
+  - Primeira linha. Provável causa do card não centralizado: o `:global(...)` com vírgulas não aplica `height: 100%` ao `#root`, e então `.app`/`.mesa` ficam com a altura do conteúdo. Confirmar com o teste AC-4.5 (`sdd-superpowers:systematic-debugging` se a causa for outra) e trocar por:
+    ```css
+    :global(html), :global(body), :global(#root) { margin: 0; height: 100%; }
+    ```
+  - `.botaoModo`: trocar `margin-top: 1.5rem` por `margin-top: 0`.
+  - Trocar a regra `.menu .destacado { border-color: #7cff6b; }` por:
+    ```css
+    .menu li { padding: 0.5rem 0.75rem; border: 2px solid transparent; border-radius: 0.75rem; }
+    .menu li.destacado { border-color: #7cff6b; }
+    .rotuloItem { margin: 0 0 0.4rem; font-weight: 700; }
+    .opcoes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .botoes { display: flex; gap: 1rem; margin-top: 1.5rem; }
+    .botaoIniciar { font-size: 1.5rem; padding: 0.75rem 2rem; border-radius: 2rem; border: none; background: #7cff6b; color: #1b1035; font-weight: 800; cursor: pointer; }
+    .botaoIniciar:disabled { opacity: 0.4; cursor: not-allowed; }
+    .sair { position: absolute; top: 1rem; left: 1rem; z-index: 2; font-size: 1.1rem; padding: 0.5rem 1rem; border-radius: 2rem; border: 2px solid #fff; background: rgb(27 16 53 / 0.7); color: #fff; cursor: pointer; }
+    ```
+- [ ] Em `docs/operacao.md`, seção "No dia do evento (operador)", acrescentar:
+  ```markdown
+  5. Clique uma vez na tela do jogo depois de abri-lo: o navegador só libera o som depois de uma interação.
+  6. Configurações (tecla M ou botão "⚙ Configurações", só na tela de espera): modo de jogo (Corpo, Mão, Cabeça), tempo por card (10–30 s) e som. Ficam guardadas no notebook.
+  7. "▶ Iniciar" começa uma partida pelas setas; "✕ Sair" (ou Esc) encerra a partida na hora.
+  ```
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 12 antigos + 2 de `configuracoes` + 7 de `partida-v2` = 21).
+- [ ] Commit: `feat(app): settings menu, start/quit buttons, sounds and centered card (Phase 10.4: Configurações e telas)`
+
+---
+
+## Phase 11 (added v2.0.0): Verificação de configurações, sons e layout no hardware
+
+**Implements:** FR-9, FR-10, FR-11, FR-4 | **Satisfies:** AC-4.5, AC-11.1–AC-11.5 (hardware)
+
+- [ ] No notebook do estande, ligado à TV:
+  - Conferir que o card fica centralizado na vertical em 1366×768 e na resolução da TV.
+  - Conferir que "✕ Sair" é fácil de achar e não cobre a faixa "Câmera indisponível".
+- [ ] Sons:
+  - Abrir o jogo, clicar uma vez e jogar com o corpo. Confirmar o som de deslizar na escolha, o som positivo no acerto e o som de erro.
+  - Avaliar o volume no barulho do evento; se preciso, ajustar `volume` em `src/app/audio.ts`.
+  - Desligar o som no menu e confirmar o silêncio.
+- [ ] Sem nenhum clique ao abrir (só gestos), registrar se o navegador bloqueia o som. Esperado: bloqueia até a primeira interação, como na linha da tabela de erros.
+- [ ] Jogar uma partida com 30 s por card e outra com 10 s. Conferir se o tempo é adequado para leitores mais lentos e para fila cheia.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -2900,7 +3778,9 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
   | FR-8 | 6 |
-  | FR-9 (v1.1.0) | 8, 9 |
+  | FR-9 (v1.1.0, reescrito v2.0.0) | 8, 9, 10, 11 |
+  | FR-10 (v2.0.0) | 10 |
+  | FR-11 (v2.0.0) | 10, 11 |
 
 - **ACs:** todas as 38 (AC-1.1–1.6, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.6, 6.1–6.4, 7.1–7.5, 8.1–8.3) aparecem num `Satisfies`. AC-1.5, 2.1–2.4, 2.6, 3.1 e 7.1 têm teste automatizado da lógica e verificação manual com hardware ou planilha real na Fase 7.
 - **Limitação conhecida:** o cenário de erro "jogo aberto offline antes de qualquer abertura online" só pode mostrar a mensagem da spec quando o shell do app já está em cache. Na primeiríssima abertura sem rede, o navegador mostra a própria página de erro, porque não há código do app para rodar. O app cobre o caso parcial (shell presente, catálogo ausente ou inválido).
@@ -2912,3 +3792,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 1.0.0 | 0–7 | Plano inicial (implementado e mergeado em 2026-10-27, revisão SPEC-ALIGNED) |
 | 1.1.0 | 8 | Adicionada: modos de jogo acessíveis (FR-9, AC-9.1–9.16) |
 | 1.1.0 | 9 | Adicionada: verificação dos modos Mão e Cabeça no hardware |
+| 2.0.0 | 8.3 | Parcialmente invalidada: o menu "Modo de jogo" é reescrito na Fase 10.4 |
+| 2.0.0 | 10 | Adicionada: Configurações (modo, tempo por card, som), Iniciar/Sair, sons e card centralizado |
+| 2.0.0 | 11 | Adicionada: verificação de configurações, sons e layout no hardware |
