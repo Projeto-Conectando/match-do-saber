@@ -17,6 +17,7 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v4.0.0, mergeado em 2026-10-27) Fase 15: com a câmera real, confirmar que o card não treme/inclina antes da escolha; barra e pulso vermelho legíveis a ~2 m na TV; centralização na resolução da TV; checar com a equipe de conteúdo o corte 16:9 das imagens (antes 4:3).
 - (v5.0.0, mergeado em 2026-10-28) Fase 17: abrir o "saiba mais" pelo gesto de cada modo e conferir que a barra continua descendo e que ele só fecha por gesto/↑/escolha/tempo; avaliar se 15 s bastam para ler e decidir (senão, subir o tempo por card até 30 s).
 - (v5.1.0, mergeado em 2026-10-28) Fase 18: na TV do estande, conferir que o botão ⚙ (canto superior direito) é fácil de achar e que o painel lateral de Configurações é legível.
+- (2026-10-28) Relógio do jogo agora segue o tempo real (antes, com a detecção de pose lenta, a barra andava a ~65%). Medido aqui: a detecção deixa o jogo a ~6–7 fps (meta da spec ≥15). Pendente: medir fps e rastreio das mãos no notebook real antes de mudar limites; possível modo de diagnóstico na tela (proposto, não feito).
 - O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
 
 **Why:** o código só foi verificado sem câmera e sem contas reais; nada foi publicado.
