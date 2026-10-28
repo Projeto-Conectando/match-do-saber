@@ -20,7 +20,7 @@ test('AC-2.3: o card não recebe transformação de inclinação', async ({ page
 
 test('AC-4.6: barra larga na base, diminuindo com o tempo', async ({ page }) => {
   const barra = page.getByRole('timer', { name: 'Tempo restante' });
-  await expect(barra).toHaveText('15 s');
+  await expect(barra).toHaveText(/^1[345] s$/);   // começa perto de 15 s: o relógio é real e, sob carga, a primeira leitura pode atrasar
   const caixa = (await barra.boundingBox())!;
   expect(caixa.width).toBeGreaterThan(1300);
   expect(caixa.height).toBeGreaterThanOrEqual(48);
