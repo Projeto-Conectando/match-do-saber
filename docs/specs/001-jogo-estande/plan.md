@@ -6,7 +6,7 @@
 
 ## Global Constraints
 
-- Tempos: 15 s por card (v2.0.0: configurável de 10 a 30 s, padrão 15 s), 3 s de feedback, 2 s de calibração, 10 s de tolerância sem pessoa, 5 s de inatividade para fechar o "saiba mais"; o resumo fica na tela até Enter.
+- Tempos: 15 s por card (v2.0.0: configurável de 10 a 30 s, padrão 15 s), 3 s de feedback, 2 s de calibração, 10 s de tolerância sem pessoa (o "saiba mais" fechava sozinho após 5 s de inatividade até a v4.0.0; removido na v5.0.0); o resumo fica na tela até Enter.
 - 10 cards por partida, 5 verdadeiros + 5 falsos, sem repetição; completa com o outro lado; com menos de 10 notícias, usa todas.
 - Pontuação: +1 por acerto; 0 por erro ou tempo esgotado.
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
@@ -4189,7 +4189,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 ```
 1. Aperte ▶ Iniciar (ou Enter) e fique no centro por 2 s. A partida começa. (v3.0.0: a câmera sozinha não inicia nada.)
 2. Desloque o tronco para a sua direita: o card sai pela direita e aparece "Acertou!" ou "Errou", com a explicação e a técnica.
-3. Levante as duas mãos: o "saiba mais" abre; espere 5 s e ele fecha.
+3. Levante as duas mãos: o "saiba mais" abre e a barra continua diminuindo; levante as mãos de novo (ou ↑) para fechar.
 4. Termine os 10 cards. O resumo "N de 10" fica na tela; Enter inicia a calibração de uma nova partida.
 5. `npm run build && npm run preview`, abrir http://localhost:4173, instalar pelo ícone da barra de endereço, desligar o Wi-Fi e reabrir pelo ícone instalado: o jogo abre e joga com imagens.
 
