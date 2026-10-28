@@ -30,11 +30,18 @@ test('AC-4.6: barra larga na base, diminuindo com o tempo', async ({ page }) => 
   expect(await largura()).toBeLessThan(antes);
 });
 
-test('AC-4.7: nos últimos 5 s o card pulsa; com "saiba mais" aberto, não', async ({ page }) => {
+test('AC-3.1/AC-4.7 (v5.0.0): com o "saiba mais" aberto a barra continua diminuindo, ele não fecha sozinho e o card pulsa nos últimos 5 s', async ({ page }) => {
   test.setTimeout(30_000);
   const card = page.locator('article');
-  await expect(page.getByRole('timer')).toHaveText('5 s', { timeout: 12_000 });
-  await expect(card).toHaveClass(/pulsando/);
-  await page.keyboard.press('ArrowUp');                        // saiba mais pausa
-  await expect(card).not.toHaveClass(/pulsando/);
+  const barra = page.getByRole('timer', { name: 'Tempo restante' });
+  const largura = () => barra.locator(':scope > div').evaluate((el) => el.getBoundingClientRect().width);
+  await page.keyboard.press('ArrowUp');
+  await expect(card.getByText('Texto expandido de teste.', { exact: false })).toBeVisible();
+  const antes = await largura();
+  await page.waitForTimeout(2000);
+  expect(await largura()).toBeLessThan(antes);                       // não trava
+  await page.waitForTimeout(4500);                                    // passa dos 5 s do antigo fechamento automático
+  await expect(card.getByText('Texto expandido de teste.', { exact: false })).toBeVisible();
+  await expect(barra).toHaveText(/^[0-9] s$/, { timeout: 10_000 });   // chegou nos últimos segundos
+  await expect(page.locator('article')).toHaveClass(/pulsando/);
 });

@@ -149,13 +149,15 @@ describe('v4.0.0: barra de tempo e pulso', () => {
     expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
     expect(screen.getByRole('timer').className).not.toMatch(/barraAlerta/);
   });
-  it.each([['saiba mais', { saibaMais: true }], ['Volte para o centro', { ausente: true }]] as const)(
-    'AC-4.7: pausado (%s) não pulsa',
-    (_nome, pausa) => {
-      const { container } = render(<TelaCard {...props} {...pausa} restanteMs={3000} />);
-      expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
-    },
-  );
+  it('AC-4.7 (v5.0.0): pausado por "Volte para o centro" não pulsa', () => {
+    const { container } = render(<TelaCard {...props} ausente restanteMs={3000} />);
+    expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+  });
+  it('AC-4.7 (v5.0.0): com o saiba mais aberto o cronômetro corre, então o card pulsa nos últimos 5 s', () => {
+    const { container } = render(<TelaCard {...props} saibaMais restanteMs={3000} />);
+    expect(container.querySelector('article')!.className).toMatch(/pulsando/);
+    expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+  });
   it('card saindo não mostra a barra nem pulsa', () => {
     const { container } = render(<TelaCard {...props} restanteMs={3000} saida="direita" />);
     expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);

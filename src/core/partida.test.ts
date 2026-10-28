@@ -127,19 +127,25 @@ describe('card', () => {
     expect(s2).toBe(s1);
     expect(rodar(s1, [tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)])).toMatchObject({ tela: 'card', indice: 1, restanteMs: TEMPOS.cardMs });
   });
-  it('AC-3.1/AC-3.2: saiba mais pausa e retoma o cronômetro', () => {
+  it('AC-3.1/AC-3.2 (v5.0.0): o cronômetro continua correndo com o saiba mais aberto', () => {
     const s = rodar(emCard(), [tick(1000), { tipo: 'saibaMais' }, tick(3000)]);
-    expect(s).toMatchObject({ saibaMais: true, restanteMs: 14000 });
-    expect(rodar(s, [{ tipo: 'saibaMais' }, tick(1000)])).toMatchObject({ saibaMais: false, restanteMs: 13000 });
+    expect(s).toMatchObject({ saibaMais: true, restanteMs: 11000 });
+    expect(rodar(s, [{ tipo: 'saibaMais' }, tick(1000)])).toMatchObject({ saibaMais: false, restanteMs: 10000 });
   });
   it('AC-3.3: escolha com saiba mais aberto registra normalmente', () => {
     const s = rodar(emCard(), [{ tipo: 'saibaMais' }, { tipo: 'escolha', resposta: 'falsa' }]);
     expect(s.tela).toBe('feedback');
   });
-  it('AC-3.5: saiba mais fecha sozinho após 5 s', () => {
-    const s = rodar(emCard(), [{ tipo: 'saibaMais' }, tick(4900)]);
-    expect(s).toMatchObject({ saibaMais: true });
-    expect(rodar(s, [tick(100)])).toMatchObject({ saibaMais: false, restanteMs: TEMPOS.cardMs });
+  it('v5.0.0: o saiba mais não fecha sozinho; o tempo esgotando leva ao feedback "tempo" (AC-4.3)', () => {
+    const s = rodar(emCard(), [{ tipo: 'saibaMais' }, tick(10000)]);
+    expect(s).toMatchObject({ tela: 'card', saibaMais: true, restanteMs: 5000 });
+    const fim = rodar(s, [tick(5000)]);
+    if (fim.tela !== 'feedback') throw new Error(fim.tela);
+    expect(fim.partida.resultados).toEqual(['tempo']);
+  });
+  it('AC-5.3 (v5.0.0): "Volte para o centro" ainda pausa o cronômetro, mesmo com o saiba mais aberto', () => {
+    const s = rodar(emCardCalibrado(), [{ tipo: 'saibaMais' }, tick(1000), tick(4000, ninguem)]);
+    expect(s).toMatchObject({ saibaMais: true, ausenteMs: 4000, restanteMs: 14000 });
   });
   it('AC-5.3/AC-5.4: sem pessoa pausa; voltando antes de 10 s continua do mesmo card', () => {
     const s = rodar(emCardCalibrado(), [tick(1000), tick(4000, ninguem)]);
