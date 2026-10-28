@@ -1,6 +1,6 @@
 ---
 name: mvp-status-fase7
-description: MVP 001-jogo-estande (spec v5.1.0: modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
+description: MVP 001-jogo-estande (spec v5.2.0, com modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
 metadata:
   type: project
 ---
@@ -18,6 +18,7 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v5.0.0, mergeado em 2026-10-28) Fase 17: abrir o "saiba mais" pelo gesto de cada modo e conferir que a barra continua descendo e que ele só fecha por gesto/↑/escolha/tempo; avaliar se 15 s bastam para ler e decidir (senão, subir o tempo por card até 30 s).
 - (v5.1.0, mergeado em 2026-10-28) Fase 18: na TV do estande, conferir que o botão ⚙ (canto superior direito) é fácil de achar e que o painel lateral de Configurações é legível.
 - (2026-10-28) Relógio do jogo agora segue o tempo real (antes, com a detecção de pose lenta, a barra andava a ~65%). Medido aqui: a detecção deixa o jogo a ~6–7 fps (meta da spec ≥15). Pendente: medir fps e rastreio das mãos no notebook real antes de mudar limites; possível modo de diagnóstico na tela (proposto, não feito).
+- (v5.2.0, mergeado em 2026-10-28) Modo de diagnóstico em `?diagnostico` (painel + "Baixar registro (60 s)"). Bug aberto: no modo Mão a barra de tempo não diminui no notebook da usuária; não reproduzido aqui (câmera falsa, Enter duas vezes: barra normal). Hipóteses: pausa por ausência em partida calibrada (detecção perde a pessoa) ou versão antiga sem a correção do relógio. Aguardando o registro .json do notebook real.
 - O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
 
 **Why:** o código só foi verificado sem câmera e sem contas reais; nada foi publicado.
