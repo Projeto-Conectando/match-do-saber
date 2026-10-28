@@ -7,7 +7,6 @@ export const TEMPOS = {
   saidaMs: 250,
   calibracaoMs: 2000,
   ausenciaMs: 10000,
-  saibaMaisOciosoMs: 5000,
 } as const;
 
 export type Resultado = 'acerto' | 'erro' | 'tempo';
@@ -21,7 +20,6 @@ export type EstadoCard = {
   indice: number;
   restanteMs: number;
   saibaMais: boolean;
-  saibaMaisOciosoMs: number;
   ausenteMs: number | null;
 };
 
@@ -47,7 +45,7 @@ export const ESTADO_INICIAL: Estado = { tela: 'espera' };
 const CALIBRACAO: Estado = { tela: 'calibracao', centradoMs: 0, ausenteMs: 0 };
 
 function card(partida: Partida, indice: number, tempoCardMs: number = TEMPOS.cardMs): EstadoCard {
-  return { tela: 'card', partida, indice, restanteMs: tempoCardMs, saibaMais: false, saibaMaisOciosoMs: 0, ausenteMs: null };
+  return { tela: 'card', partida, indice, restanteMs: tempoCardMs, saibaMais: false, ausenteMs: null };
 }
 
 function iniciarPartida(ctx: Contexto, entrada: Entrada): Estado {
@@ -94,7 +92,7 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
         const certo = evento.resposta === estado.partida.cards[estado.indice]!.veredito;
         return registrar(estado, certo ? 'acerto' : 'erro', evento.resposta);
       }
-      if (evento.tipo === 'saibaMais') return { ...estado, saibaMais: !estado.saibaMais, saibaMaisOciosoMs: 0 };
+      if (evento.tipo === 'saibaMais') return { ...estado, saibaMais: !estado.saibaMais };
       if (evento.tipo !== 'tick') return estado;
       // Partida pelo teclado/mouse (AC-1.6) não depende de presença.
       const p = estado.partida.entrada === 'alternativa' ? null : evento.presenca;
@@ -103,12 +101,6 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
         return ausenteMs >= TEMPOS.ausenciaMs ? ESTADO_INICIAL : { ...estado, ausenteMs };
       }
       const base: EstadoCard = { ...estado, ausenteMs: null };
-      if (base.saibaMais) {
-        const ocioso = base.saibaMaisOciosoMs + evento.dtMs;
-        return ocioso >= TEMPOS.saibaMaisOciosoMs
-          ? { ...base, saibaMais: false, saibaMaisOciosoMs: 0 }
-          : { ...base, saibaMaisOciosoMs: ocioso };
-      }
       const restanteMs = base.restanteMs - evento.dtMs;
       return restanteMs <= 0 ? registrar(base, 'tempo', null) : { ...base, restanteMs };
     }

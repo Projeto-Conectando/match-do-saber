@@ -132,7 +132,7 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, ponto
 }) {
   const inicioX = useRef<number | null>(null);
   const alerta = !saida && restanteMs <= 5000;
-  const pulsando = alerta && !saibaMais && !ausente; // AC-4.7: pausado não pulsa
+  const pulsando = alerta && !ausente; // AC-4.7: só "Volte para o centro" pausa o cronômetro (v5.0.0)
   return (
     <main className={s.mesa}>
       <div className={s.lado}>✗ Falsa</div>
