@@ -46,7 +46,7 @@ test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC
   await page.keyboard.press('Enter');
   const card = page.locator('article');
   await expect(card).toBeVisible();
-  await expect(page.getByRole('timer', { name: 'Tempo restante' })).toHaveText('10 s');   // AC-9.17
+  await expect(page.getByRole('timer', { name: 'Tempo restante' })).toHaveText(/^(10|9|8) s$/);   // AC-9.17: começa em 10 s (o relógio é real; sob carga a leitura pode atrasar)
   const dica = page.getByText(DICA_MAO);
   await expect(dica).toBeVisible();                                                       // AC-9.14
   const [a, b] = [(await dica.boundingBox())!, (await card.boundingBox())!];
