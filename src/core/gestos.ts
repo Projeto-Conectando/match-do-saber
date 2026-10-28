@@ -19,7 +19,8 @@ export const CONFIG_GESTOS = {
   retornoCabecaGraus: 6,
   limiarQueixo: 0.25,
 };
-type Config = typeof CONFIG_GESTOS;
+export type ConfigGestos = typeof CONFIG_GESTOS;
+type Config = ConfigGestos;
 
 const NARIZ = 0, ORELHA_E = 7, ORELHA_D = 8, OMBRO_E = 11, OMBRO_D = 12, PUNHO_E = 15, PUNHO_D = 16;
 const AUSENTE: LeituraGesto = { presenca: { presente: false, centralizado: false }, inclinacao: 0, gestos: [] };
@@ -32,6 +33,27 @@ function medir(p: Pose): { cx: number; largura: number } {
 
 function presenca(cx: number, cfg: Config): Presenca {
   return { presente: true, centralizado: Math.abs(cx - 0.5) < cfg.zonaCalibracao };
+}
+
+export interface MedidaMaos { direita: boolean; esquerda: boolean }
+
+/** Mão acima do ombro pela regra do modo Mão (AC-9.7). Lados anatômicos do jogador. */
+export function medirMaos(pose: Pose, cfg: Config = CONFIG_GESTOS): MedidaMaos {
+  const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
+  return { direita: acima(PUNHO_D, OMBRO_D), esquerda: acima(PUNHO_E, OMBRO_E) };
+}
+
+export interface MedidaCabeca { rollGraus: number; queixo: number }
+
+/** Inclinação (graus; + = própria direita) e queixo (+ = olhando para cima) do modo Cabeça (AC-9.10, AC-9.11). */
+export function medirCabeca(pose: Pose): MedidaCabeca {
+  const oe = pose[ORELHA_E]!, od = pose[ORELHA_D]!, nariz = pose[NARIZ]!;
+  const dist = Math.max(Math.abs(oe.x - od.x), 1e-6);
+  // Orelha direita mais baixa que a esquerda = cabeça inclinada para a própria direita.
+  const rollGraus = (Math.atan2(od.y - oe.y, dist) * 180) / Math.PI;
+  // Nariz subindo em relação às orelhas = queixo para cima.
+  const queixo = ((oe.y + od.y) / 2 - nariz.y) / dist;
+  return { rollGraus, queixo };
 }
 
 const limitar = (v: number) => Math.max(-1, Math.min(1, v));
@@ -118,9 +140,7 @@ function interpretadorMao(cfg: Config): Interpretador {
       if (!pose) { lado = null; ambas.zerar(); return AUSENTE; }
       const gestos: Gesto[] = [];
       const { cx } = medir(pose);
-      const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
-      const dir = acima(PUNHO_D, OMBRO_D);
-      const esq = acima(PUNHO_E, OMBRO_E);
+      const { direita: dir, esquerda: esq } = medirMaos(pose, cfg);
 
       if (ambas.ler(dir && esq, tMs)) {
         gestos.push('maosParaCima');
@@ -160,12 +180,7 @@ function interpretadorCabeca(cfg: Config): Interpretador {
       if (!pose) { lado.zerar(); queixo.zerar(); return AUSENTE; }
       const gestos: Gesto[] = [];
       const { cx } = medir(pose);
-      const oe = pose[ORELHA_E]!, od = pose[ORELHA_D]!, nariz = pose[NARIZ]!;
-      const dist = Math.max(Math.abs(oe.x - od.x), 1e-6);
-      // Orelha direita mais baixa que a esquerda = cabeça inclinada para a própria direita.
-      const roll = (Math.atan2(od.y - oe.y, dist) * 180) / Math.PI;
-      // Nariz subindo em relação às orelhas = queixo para cima.
-      const q = ((oe.y + od.y) / 2 - nariz.y) / dist;
+      const { rollGraus: roll, queixo: q } = medirCabeca(pose);
       ultimoRoll = roll;
       ultimoQueixo = q;
       if (queixoCentro === null) queixoCentro = q;

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseCatalogo } from '../core/catalogo';
+import { criarRegistro } from '../core/diagnostico';
 import { TEMPOS, pontos, tecnicasDaPartida, type Estado } from '../core/partida';
 import type { Noticia } from '../core/types';
+import { baixarJson } from './baixar';
 import { CameraPreview } from './CameraPreview';
+import { PainelDiagnostico } from './PainelDiagnostico';
 import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 import { useConfiguracoes } from './useConfiguracoes';
 import { useJogo } from './useJogo';
@@ -32,7 +35,9 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
   const telaRef = useRef<Estado['tela']>('espera');
   const podeAbrirMenu = useCallback(() => telaRef.current === 'espera', []);
   const cfg = useConfiguracoes(podeAbrirMenu);
-  const { estado, despachar, camera, videoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto);
+  // Modo de diagnóstico (FR-12): só com ?diagnostico no endereço.
+  const diagnostico = useMemo(() => (new URLSearchParams(window.location.search).has('diagnostico') ? criarRegistro() : undefined), []);
+  const { estado, despachar, camera, videoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto, diagnostico);
   telaRef.current = estado.tela;
   useSons(estado, cfg.config.som);
   const cardRef = useRef<HTMLElement>(null);
@@ -108,6 +113,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       {cfg.menuAberto && (
         <MenuConfiguracoes config={cfg.config} itemDestacado={cfg.itemDestacado} onDefinir={cfg.definir} onFechar={cfg.fechar} />
       )}
+      {diagnostico && <PainelDiagnostico registro={diagnostico} onBaixar={() => baixarJson(diagnostico.exportar())} />}
       <CameraPreview videoRef={videoRef} poseRef={poseRef} visivel={camera === 'ativa'} />
     </div>
   );

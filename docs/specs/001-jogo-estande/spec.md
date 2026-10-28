@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 5.1.0
+**Version:** 5.2.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -20,6 +20,7 @@
 | 4.0.0 | 2026-10-27 | Card parado até a escolha: reescritos AC-2.3 e AC-9.13 (o card não inclina mais com o corpo ou a cabeça, porque tremia com a captura da câmera; rastreio e gestos não mudam). Cronômetro reescrito em FR-4: sai o número em cima do card, entra uma barra grande na base da tela, com os segundos (AC-4.6), e nos últimos 5 s o card pulsa em vermelho (AC-4.7). AC-4.5 passa a medir a área de jogo sem a barra |
 | 5.0.0 | 2026-10-28 | O tempo do card não pausa mais com o "saiba mais" aberto: reescritos AC-3.1, AC-3.2, AC-4.7 e FR-1; removido AC-3.5 (o "saiba mais" não fecha mais sozinho). Só "Volte para o centro" pausa o cronômetro. Causa: a barra de tempo e sua animação ficavam paradas com o "saiba mais" aberto, porque a regra pausava o cronômetro |
 | 5.1.0 | 2026-10-28 | Configurações no canto superior direito: o botão vira "⚙" fixo no canto superior direito da tela de espera (AC-9.1) e o menu abre como painel lateral à direita (novo AC-9.18); o painel fecha também pelo "✕" (AC-9.3). Itens, teclas e regras do menu não mudam |
+| 5.2.0 | 2026-10-28 | Adicionados Story 12 e FR-12: modo de diagnóstico, ligado só pelo endereço com `?diagnostico`, que mostra quadros por segundo, tempo de detecção da pose, pontos e confiança de pulsos, ombros e cabeça e os gestos recentes, e permite baixar um registro dos últimos 60 s. Serve para ajustar os limites dos gestos com dados do notebook real; o jogo normal não muda |
 
 ---
 
@@ -229,6 +230,22 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-11.4** Given o som está desligado nas configurações When qualquer escolha ou feedback acontece Then nenhum som toca.
 - [ ] **AC-11.5** Given o jogo está sem internet When um som deve tocar Then ele toca normalmente: os sons não dependem de rede.
 
+
+### Story 12: Medir o rastreio no notebook real (adicionado v5.2.0)
+
+**As a** equipe técnica
+**I want** ver e registrar, no notebook do estande, o desempenho da detecção de pose e o que ela enxerga das mãos e da cabeça
+**So that** os limites dos gestos sejam ajustados com dados reais, e não por tentativa
+
+**Acceptance criteria:**
+
+- [ ] **AC-12.1** Given o jogo é aberto sem `?diagnostico` no endereço When qualquer tela aparece Then nenhum painel de diagnóstico é mostrado e nada é registrado.
+- [ ] **AC-12.2** Given o jogo é aberto com `?diagnostico` no endereço When qualquer tela aparece Then um painel "Diagnóstico" aparece no canto superior esquerdo, abaixo do lugar do "✕ Sair", sem cobrir o card (FR-4), e se atualiza pelo menos 2 vezes por segundo.
+- [ ] **AC-12.3** Given o painel de diagnóstico está na tela When a câmera está ativa Then ele mostra: quadros por segundo do último segundo; tempo médio e máximo da detecção de pose no último segundo, em ms; número de pessoas detectadas; modo de jogo e tela atuais; para punho direito, punho esquerdo, ombro direito e ombro esquerdo, a altura (y) e a confiança; se cada mão está acima do ombro pela regra do modo Mão; a inclinação da cabeça em graus e a medida do queixo; e os gestos reconhecidos nos últimos 5 s. Sem câmera, a linha da detecção mostra "sem câmera".
+- [ ] **AC-12.4** Given o painel de diagnóstico está na tela When o operador clica em "Baixar registro (60 s)" Then o navegador salva no notebook um arquivo `match-do-saber-diagnostico-<data e hora>.json` com as medições, quadro a quadro, dos últimos 60 s: horário, intervalo do quadro, tempo de detecção, pessoas, modo, tela, os pontos nariz, orelhas, ombros e punhos (x, y, confiança), as medidas das mãos e da cabeça e os gestos reconhecidos.
+- [ ] **AC-12.5** Given o modo de diagnóstico está ligado When o jogo roda Then nenhuma medição sai do notebook nem fica guardada no navegador; o arquivo só existe se o operador clicar em "Baixar registro", e nenhuma imagem da câmera entra no registro.
+- [ ] **AC-12.6** Given o modo de diagnóstico está ligado When uma partida acontece Then o jogo se comporta exatamente como sem ele: mesmos tempos, gestos, pontos e telas.
+
 ## Functional Requirements
 
 ### FR-1: Fluxo de estados da partida
@@ -364,6 +381,19 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Tocar sons fora desses três momentos (sem música de fundo).
 - Atrasar a troca de tela por causa de um som.
 
+
+### FR-12: Modo de diagnóstico (adicionado v5.2.0)
+
+**Must:**
+- Ligar o modo só quando o endereço tiver `?diagnostico`; sem isso, nada muda (AC-12.1).
+- Mostrar o painel com as medidas de AC-12.3, atualizado ao menos 2 vezes por segundo, sem cobrir o card.
+- Guardar em memória só os últimos 60 s de medições e oferecer "Baixar registro (60 s)" em JSON (AC-12.4).
+- Calcular as medidas das mãos e da cabeça com as mesmas regras que o jogo usa para reconhecer os gestos.
+
+**Must not:**
+- Enviar medições pela rede, gravá-las no navegador ou incluir imagens da câmera.
+- Mudar o comportamento do jogo (AC-12.6).
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -448,6 +478,10 @@ Decisões da v5.0.0, confirmadas pela responsável pelo projeto em 2026-10-28:
 Decisões da v5.1.0, confirmadas pela responsável pelo projeto em 2026-10-28:
 - O botão das configurações fica no canto superior direito da tela de espera, só com o ícone "⚙".
 - O menu abre como painel lateral à direita, com a altura da tela; o resto da tela fica escurecido atrás.
+
+Decisões da v5.2.0, confirmadas em 2026-10-28 (a responsável pediu para preparar o diagnóstico e deixou a variante a critério da equipe):
+- O diagnóstico inclui o painel na tela e o botão "Baixar registro (60 s)", porque um arquivo com dados do notebook real é o que permite ajustar os limites dos gestos sem tentativa.
+- Ele só liga com `?diagnostico` no endereço; o operador do evento usa o endereço normal.
 
 ## Out of Scope (Future Considerations)
 
