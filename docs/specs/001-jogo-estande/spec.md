@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 5.0.0
+**Version:** 5.1.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -19,6 +19,7 @@
 | 3.0.0 | 2026-10-27 | Início só manual: a câmera deixa de iniciar a partida sozinha (reescritos AC-1.1, AC-1.6, AC-10.1, FR-1 e a linha "Iluminação ruim" dos erros; ajustados AC-1.4 e AC-10.3; acrescentados AC-1.7 e AC-1.8). Causa: depois de uma partida, de Sair ou de a pessoa sair do quadro, o jogo recomeçava sozinho se alguém continuasse no quadro |
 | 4.0.0 | 2026-10-27 | Card parado até a escolha: reescritos AC-2.3 e AC-9.13 (o card não inclina mais com o corpo ou a cabeça, porque tremia com a captura da câmera; rastreio e gestos não mudam). Cronômetro reescrito em FR-4: sai o número em cima do card, entra uma barra grande na base da tela, com os segundos (AC-4.6), e nos últimos 5 s o card pulsa em vermelho (AC-4.7). AC-4.5 passa a medir a área de jogo sem a barra |
 | 5.0.0 | 2026-10-28 | O tempo do card não pausa mais com o "saiba mais" aberto: reescritos AC-3.1, AC-3.2, AC-4.7 e FR-1; removido AC-3.5 (o "saiba mais" não fecha mais sozinho). Só "Volte para o centro" pausa o cronômetro. Causa: a barra de tempo e sua animação ficavam paradas com o "saiba mais" aberto, porque a regra pausava o cronômetro |
+| 5.1.0 | 2026-10-28 | Configurações no canto superior direito: o botão vira "⚙" fixo no canto superior direito da tela de espera (AC-9.1) e o menu abre como painel lateral à direita (novo AC-9.18); o painel fecha também pelo "✕" (AC-9.3). Itens, teclas e regras do menu não mudam |
 
 ---
 
@@ -181,9 +182,9 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 **Acceptance criteria:**
 
-- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica em "⚙ Configurações") Then abre o menu "Configurações" com três itens e os valores atuais marcados: "Modo de jogo" (Corpo, Mão, Cabeça), "Tempo por card" (10, 15, 20, 25 ou 30 s) e "Som" (Ligado, Desligado).
+- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica no botão "⚙" fixo no canto superior direito da tela, de nome acessível "Configurações") Then abre o menu "Configurações" com três itens e os valores atuais marcados: "Modo de jogo" (Corpo, Mão, Cabeça), "Tempo por card" (10, 15, 20, 25 ou 30 s) e "Som" (Ligado, Desligado).
 - [ ] **AC-9.2** Given o menu "Configurações" está aberto When o operador muda um valor (↑/↓ escolhem o item, ←/→ mudam o valor; ou clique no valor) Then o valor muda na hora, fica guardado, e a tela de espera passa a mostrar o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
-- [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc, M ou Enter, ou clica em "Fechar" Then o menu fecha mantendo os valores escolhidos, e nenhuma partida começa.
+- [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc, M ou Enter, ou clica no "✕" do painel (nome acessível "Fechar") Then o menu fecha mantendo os valores escolhidos, e nenhuma partida começa.
 - [ ] **AC-9.4** Given nada foi configurado antes neste notebook When o jogo é aberto Then as configurações são: modo Corpo, 15 s por card e som ligado.
 - [ ] **AC-9.5** Given o operador mudou as configurações When o jogo é fechado e reaberto, inclusive sem internet Then as mesmas configurações continuam ativas.
 - [ ] **AC-9.6** Given o jogo não está na tela de espera When o operador pressiona M Then nada acontece: as configurações só mudam entre partidas.
@@ -198,6 +199,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-9.15** Given o modo Mão ou Cabeça e um jogador sentado diante da câmera, com ombros e rosto visíveis When ele fica no centro por 2 s Then a calibração conclui e a partida começa.
 - [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
 - [ ] **AC-9.17** Given o tempo por card configurado em N s When um card aparece Then o cronômetro começa em N s e o tempo esgota depois de N s; no menu, ← em 10 s e → em 30 s não mudam o valor.
+- [ ] **AC-9.18** Given a tela de espera When o menu "Configurações" abre Then ele aparece como um painel encostado na borda direita, com a altura da tela inteira e largura de até 26rem, sobre o restante da tela escurecido; o título "Configurações" e o "✕" ficam no topo do painel, e o botão "▶ Iniciar" continua no mesmo lugar.
 
 ### Story 10: Iniciar e sair com um clique (adicionado v2.0.0)
 
@@ -319,11 +321,11 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ### FR-9: Configurações do estande — modos acessíveis, tempo e som (reescrito v2.0.0)
 
 **Must:**
-- Oferecer, na tela de espera, o menu "Configurações" (tecla M ou botão "⚙ Configurações") com três itens:
+- Oferecer, na tela de espera, o menu "Configurações" (tecla M ou botão "⚙" no canto superior direito, de nome acessível "Configurações"), aberto como painel lateral à direita (AC-9.18), com três itens:
   - "Modo de jogo": Corpo (padrão, FR-2), Mão ou Cabeça.
   - "Tempo por card": 10, 15 (padrão), 20, 25 ou 30 s.
   - "Som": Ligado (padrão) ou Desligado.
-- Navegar no menu com ↑/↓ (item) e ←/→ (valor), ou com clique; fechar com Esc, M, Enter ou "Fechar", sem iniciar partida.
+- Navegar no menu com ↑/↓ (item) e ←/→ (valor), ou com clique; fechar com Esc, M, Enter ou o "✕" do painel ("Fechar"), sem iniciar partida.
 - Mostrar na tela de espera o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
 - Aplicar o tempo por card a todos os cards da partida (AC-1.2, AC-4.4, AC-9.17).
 - Guardar as três configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
@@ -442,6 +444,10 @@ Decisões da v5.0.0, confirmadas pela responsável pelo projeto em 2026-10-28:
 - O tempo do card continua correndo com o "saiba mais" aberto: ler mais informação custa tempo.
 - O "saiba mais" não fecha mais sozinho: fecha por gesto, ↑, escolha ou tempo esgotado.
 - Só "Volte para o centro" pausa o cronômetro.
+
+Decisões da v5.1.0, confirmadas pela responsável pelo projeto em 2026-10-28:
+- O botão das configurações fica no canto superior direito da tela de espera, só com o ícone "⚙".
+- O menu abre como painel lateral à direita, com a altura da tela; o resto da tela fica escurecido atrás.
 
 ## Out of Scope (Future Considerations)
 
