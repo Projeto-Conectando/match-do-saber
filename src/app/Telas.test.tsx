@@ -96,8 +96,9 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
     const abrir = vi.fn();
     render(<TelaEspera semNoticias={false} camera="ativa" config={{ modo: 'mao', tempoCardS: 20, som: false }} onAbrirMenu={abrir} onIniciar={iniciar} />);
     expect(screen.getByText('Modo: Mão · Tempo por card: 20 s · Som: desligado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configurações' })).toHaveTextContent('⚙');
     fireEvent.click(screen.getByRole('button', { name: '▶ Iniciar' }));
-    fireEvent.click(screen.getByRole('button', { name: '⚙ Configurações' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Configurações' }));
     expect(iniciar).toHaveBeenCalledOnce();
     expect(abrir).toHaveBeenCalledOnce();
   });
@@ -117,6 +118,9 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
     expect(screen.getByRole('button', { name: '◉ Ligado' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: '○ 25 s' }));
     expect(definir).toHaveBeenCalledWith({ modo: 'corpo', tempoCardS: 25, som: true });
+    // AC-9.3/AC-9.18: o "✕" no topo do painel fecha
+    const fechar = screen.getByRole('button', { name: 'Fechar' });
+    expect(fechar).toHaveTextContent('✕');
   });
   it('AC-10.5: botão Sair tem nome acessível "Sair da partida"', () => {
     const sair = vi.fn();

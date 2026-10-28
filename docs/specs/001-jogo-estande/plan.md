@@ -4180,6 +4180,87 @@ Itens invalidados pela v5.0.0:
 
 ---
 
+## Phase 18 (added v5.1.0): Configurações no canto superior direito
+
+**Implements:** FR-9 (apresentação) | **Satisfies:** AC-9.1, AC-9.3, AC-9.18
+**Files:** `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.module.css`, `tests/e2e/configuracoes.spec.ts`
+**Interfaces:** Consumes: `TelaEspera`, `MenuConfiguracoes` (`src/app/Telas.tsx`, Fase 10) e `useConfiguracoes` (sem mudança). Produces: nenhum nome novo; o botão passa a ter nome acessível "Configurações" e o "✕" do painel, "Fechar".
+
+Só muda a apresentação: o botão "⚙ Configurações" sai do centro da espera e vira um ícone "⚙" fixo no canto superior direito; o diálogo centralizado vira um painel encostado à direita. Itens, teclas (M, ↑↓←→, Esc/M/Enter), regras de abertura (só na espera) e gravação não mudam.
+
+- [ ] Em `src/app/Telas.test.tsx`, no teste `AC-9.2/AC-10.1: espera mostra o resumo, Iniciar e Configurações`, trocar `screen.getByRole('button', { name: '⚙ Configurações' })` por `screen.getByRole('button', { name: 'Configurações' })` e acrescentar, logo depois do render:
+  ```tsx
+  expect(screen.getByRole('button', { name: 'Configurações' })).toHaveTextContent('⚙');
+  ```
+- [ ] Em `src/app/Telas.test.tsx`, no teste `AC-9.1: menu mostra os três itens…`, acrescentar no fim:
+  ```tsx
+  // AC-9.3/AC-9.18: o "✕" no topo do painel fecha
+  const fechar = screen.getByRole('button', { name: 'Fechar' });
+  expect(fechar).toHaveTextContent('✕');
+  ```
+- [ ] Em `tests/e2e/configuracoes.spec.ts`, trocar `page.getByRole('button', { name: '⚙ Configurações' })` por `page.getByRole('button', { name: 'Configurações' })`, e acrescentar o teste:
+  ```ts
+  test('AC-9.1/AC-9.18: ⚙ no canto superior direito abre um painel lateral à direita', async ({ page }) => {
+    await abrirSemCamera(page);
+    const vp = page.viewportSize()!;
+    const botao = page.getByRole('button', { name: 'Configurações' });
+    const b = (await botao.boundingBox())!;
+    expect(b.x + b.width).toBeGreaterThan(vp.width - 48);
+    expect(b.y).toBeLessThan(48);
+    const iniciar = page.getByRole('button', { name: '▶ Iniciar' });
+    const antes = (await iniciar.boundingBox())!;
+
+    await botao.click();
+    const painel = page.getByRole('dialog', { name: 'Configurações' }).locator(':scope > div');
+    await expect(painel).toBeVisible();
+    await page.waitForTimeout(300);                                    // fim da animação de entrada
+    const p = (await painel.boundingBox())!;
+    expect(p.x + p.width).toBeCloseTo(vp.width, 0);                   // encostado à direita
+    expect(p.y).toBeCloseTo(0, 0);
+    expect(p.height).toBeCloseTo(vp.height, 0);                       // altura da tela
+    expect(p.width).toBeLessThanOrEqual(26 * 16 + 1);                 // até 26rem
+    expect((await iniciar.boundingBox())!).toEqual(antes);            // Iniciar não sai do lugar
+    await page.getByRole('button', { name: 'Fechar' }).click();
+    await expect(page.getByRole('dialog', { name: 'Configurações' })).toBeHidden();
+  });
+  ```
+- [ ] Rodar `npx vitest run src/app` e `npm run fixture && npx vite build && npx playwright test tests/e2e/configuracoes.spec.ts`. Esperado: FAIL.
+- [ ] Em `src/app/Telas.tsx`, `TelaEspera`: tirar o botão "⚙ Configurações" de dentro de `.botoes` (fica só o "▶ Iniciar") e acrescentar, como último filho do `<main>`:
+  ```tsx
+  <button
+    type="button"
+    className={s.botaoConfig}
+    aria-label="Configurações"
+    title="Configurações (M)"
+    onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}
+  >
+    ⚙
+  </button>
+  ```
+- [ ] Em `src/app/Telas.tsx`, `MenuConfiguracoes`: trocar a classe do contêiner `s.sobreposicao` por `s.painel`; trocar `<h2>Configurações</h2>` por
+  ```tsx
+  <div className={s.cabecalhoMenu}>
+    <h2>Configurações</h2>
+    <button type="button" aria-label="Fechar" onClick={onFechar}>✕</button>
+  </div>
+  ```
+  e remover o `<button type="button" onClick={onFechar}>Fechar</button>` do fim.
+- [ ] Em `src/app/App.module.css`: remover `.botaoModo`; em `.menu`, trocar `border-radius: 1.5rem;` por `border-radius: 0;`; acrescentar:
+  ```css
+  .botaoConfig { position: absolute; top: 1rem; right: 1rem; z-index: 2; width: 3.25rem; height: 3.25rem; border-radius: 50%; border: 2px solid #fff; background: rgb(27 16 53 / 0.7); color: #fff; font-size: 1.6rem; line-height: 1; cursor: pointer; }
+  .painel { position: absolute; inset: 0; z-index: 3; display: flex; justify-content: flex-end; background: rgb(27 16 53 / 0.6); }
+  .painel > .menu { height: 100%; width: min(26rem, 100vw); max-width: none; box-sizing: border-box; overflow-y: auto; animation: entraPainel 0.2s ease-out; }
+  .cabecalhoMenu { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .cabecalhoMenu h2 { margin: 0; }
+  @keyframes entraPainel { from { transform: translateX(100%); } }
+  ```
+  (o `.menu` já é a classe do filho direto do diálogo.)
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 25 + 1 = 26).
+- [ ] Manual (junto com a Fase 15): na TV do estande, conferir que o "⚙" é fácil de achar e que o painel é legível.
+- [ ] Commit: `feat(app): settings button in the top-right corner with a right-side panel (Phase 18: Configurações no canto)`
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -4232,3 +4313,4 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 5.0.0 | 3, 14 | Parcialmente invalidadas: pausa do cronômetro e fechamento automático do saiba mais; reescritos na Fase 16 |
 | 5.0.0 | 16 | Adicionada: tempo corre com o saiba mais aberto |
 | 5.0.0 | 17 | Adicionada: verificação no hardware |
+| 5.1.0 | 18 | Adicionada: botão ⚙ no canto superior direito e menu como painel lateral |

@@ -37,11 +37,17 @@ export function TelaEspera({ semNoticias, camera, config = CONFIG_PADRAO, onAbri
         <button type="button" className={s.botaoIniciar} disabled={semNoticias} onClick={(e) => { e.currentTarget.blur(); onIniciar(); }}>
           ▶ Iniciar
         </button>
-        <button type="button" className={s.botaoModo} onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}>
-          ⚙ Configurações
-        </button>
       </div>
       <p className={s.dica}>{resumoConfiguracoes(config)}</p>
+      <button
+        type="button"
+        className={s.botaoConfig}
+        aria-label="Configurações"
+        title="Configurações (M)"
+        onClick={(e) => { e.currentTarget.blur(); onAbrirMenu(); }}
+      >
+        ⚙
+      </button>
     </main>
   );
 }
@@ -63,9 +69,12 @@ export function MenuConfiguracoes({ config, itemDestacado, onDefinir, onFechar }
   onFechar: () => void;
 }) {
   return (
-    <div className={s.sobreposicao} role="dialog" aria-modal="true" aria-label="Configurações">
+    <div className={s.painel} role="dialog" aria-modal="true" aria-label="Configurações">
       <div className={s.menu}>
-        <h2>Configurações</h2>
+        <div className={s.cabecalhoMenu}>
+          <h2>Configurações</h2>
+          <button type="button" aria-label="Fechar" onClick={onFechar}>✕</button>
+        </div>
         <ul>
           {ITENS_CONFIG.map((item, i) => (
             <li key={item} className={i === itemDestacado ? s.destacado : undefined}>
@@ -90,7 +99,6 @@ export function MenuConfiguracoes({ config, itemDestacado, onDefinir, onFechar }
           ))}
         </ul>
         <p className={s.dica}>↑/↓ escolhem o item · ←/→ mudam o valor · Esc ou Enter fecham</p>
-        <button type="button" onClick={onFechar}>Fechar</button>
       </div>
     </div>
   );

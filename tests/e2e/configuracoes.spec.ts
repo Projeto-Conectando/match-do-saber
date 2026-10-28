@@ -57,7 +57,7 @@ test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC
 
 test('menu pelo mouse (AC-9.2) e setas no modo Cabeça (AC-9.16)', async ({ page }) => {
   await abrirSemCamera(page);
-  await page.getByRole('button', { name: '⚙ Configurações' }).click();
+  await page.getByRole('button', { name: 'Configurações' }).click();
   const menu = page.getByRole('dialog', { name: 'Configurações' });
   await menu.getByRole('button', { name: '○ Cabeça' }).click();
   await expect(menu.getByRole('button', { name: '◉ Cabeça' })).toBeVisible();
@@ -68,4 +68,28 @@ test('menu pelo mouse (AC-9.2) e setas no modo Cabeça (AC-9.16)', async ({ page
   await expect(menu).toHaveCount(0);
   await page.keyboard.press('ArrowRight');
   await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();
+});
+
+test('AC-9.1/AC-9.18: ⚙ no canto superior direito abre um painel lateral à direita', async ({ page }) => {
+  await abrirSemCamera(page);
+  const vp = page.viewportSize()!;
+  const botao = page.getByRole('button', { name: 'Configurações' });
+  const b = (await botao.boundingBox())!;
+  expect(b.x + b.width).toBeGreaterThan(vp.width - 48);
+  expect(b.y).toBeLessThan(48);
+  const iniciar = page.getByRole('button', { name: '▶ Iniciar' });
+  const antes = (await iniciar.boundingBox())!;
+
+  await botao.click();
+  const painel = page.getByRole('dialog', { name: 'Configurações' }).locator(':scope > div');
+  await expect(painel).toBeVisible();
+  await page.waitForTimeout(300);                                    // fim da animação de entrada
+  const p = (await painel.boundingBox())!;
+  expect(p.x + p.width).toBeCloseTo(vp.width, 0);                   // encostado à direita
+  expect(p.y).toBeCloseTo(0, 0);
+  expect(p.height).toBeCloseTo(vp.height, 0);                       // altura da tela
+  expect(p.width).toBeLessThanOrEqual(26 * 16 + 1);                 // até 26rem
+  expect((await iniciar.boundingBox())!).toEqual(antes);            // Iniciar não sai do lugar
+  await page.getByRole('button', { name: 'Fechar' }).click();
+  await expect(page.getByRole('dialog', { name: 'Configurações' })).toBeHidden();
 });
