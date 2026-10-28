@@ -4261,6 +4261,465 @@ Só muda a apresentação: o botão "⚙ Configurações" sai do centro da esper
 
 ---
 
+## Phase 19 (added v5.2.0): Modo de diagnóstico
+
+**Implements:** FR-12, Story 12 | **Satisfies:** AC-12.1–AC-12.6
+**Files:** `src/core/gestos.ts`, `src/core/gestos-medidas.test.ts`, `src/core/diagnostico.ts`, `src/core/diagnostico.test.ts`, `src/app/useJogo.ts`, `src/app/PainelDiagnostico.tsx`, `src/app/PainelDiagnostico.test.tsx`, `src/app/baixar.ts`, `src/app/App.tsx`, `src/app/App.module.css`, `tests/e2e/diagnostico.spec.ts`, `docs/operacao.md`
+**Interfaces:** Consumes: `Pose`, `Gesto`, `CONFIG_GESTOS`, `escolherJogador`, `criarInterpretador` (`src/core/gestos.ts`); `ModoJogo`, `MODO_ROTULO` (`src/core/modos.ts`); `useJogo` (`src/app/useJogo.ts`). Produces:
+- de `src/core/gestos.ts`: `ConfigGestos`, `MedidaMaos`, `medirMaos(pose, cfg?)`, `MedidaCabeca`, `medirCabeca(pose)`. Os interpretadores Mão e Cabeça passam a usá-las, sem mudar o comportamento.
+- de `src/core/diagnostico.ts`: `PONTOS_DIAGNOSTICO`, `NomePonto`, `PontoMedido`, `Amostra`, `extrairPontos(pose)`, `Resumo`, `Registro`, `criarRegistro(janelaMs?, agoraIso?)`.
+- `PainelDiagnostico({ registro, onBaixar })`.
+- `baixarJson(dados, nome?)`.
+- `useJogo(noticias, config, pausado, registro?)`.
+
+Objetivo: medir no notebook real o custo da detecção de pose e o que ela enxerga das mãos e da cabeça, para ajustar `CONFIG_GESTOS` com dados (ver a lição `docs/lessons/2026-10-28-relogio-preso-aos-quadros.md`). O rastreio, os limites e o jogo não mudam.
+
+Decisões técnicas (inline):
+- **Ativação:** `new URLSearchParams(location.search).has('diagnostico')`, lido uma vez na montagem. Sem o parâmetro, `useJogo` recebe `registro` indefinido e não grava nada (AC-12.1).
+- **Fórmulas sem duplicação:** as fórmulas das mãos (punho acima do ombro com `margemMaoOmbro`) e da cabeça (inclinação pelas orelhas, queixo pelo nariz) saem dos interpretadores para `medirMaos`/`medirCabeca`. O jogo e o diagnóstico usam o mesmo código (FR-12).
+- **Memória limitada:** o registro guarda só os últimos 60 s, cerca de 1800 amostras a 30 fps.
+- **Download local:** `Blob` + `<a download>`; nada vai para a rede nem para o `localStorage` (AC-12.5).
+
+### 19.1 Medidas compartilhadas (gestos)
+
+- [ ] Escrever `src/core/gestos-medidas.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { CONFIG_GESTOS, medirCabeca, medirMaos, type Pose } from './gestos';
+
+  function base(): Pose {
+    const p = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.8, visibility: 1 }));
+    p[0] = { x: 0.5, y: 0.33, visibility: 1 };
+    p[7] = { x: 0.55, y: 0.3, visibility: 1 };
+    p[8] = { x: 0.45, y: 0.3, visibility: 1 };
+    p[11] = { x: 0.6, y: 0.45, visibility: 1 };
+    p[12] = { x: 0.4, y: 0.45, visibility: 1 };
+    p[15] = { x: 0.65, y: 0.7, visibility: 1 };
+    p[16] = { x: 0.35, y: 0.7, visibility: 1 };
+    return p;
+  }
+
+  describe('medidas compartilhadas', () => {
+    it('medirMaos: punho acima do ombro menos a margem', () => {
+      const p = base();
+      expect(medirMaos(p)).toEqual({ direita: false, esquerda: false });
+      p[16] = { ...p[16]!, y: 0.45 - CONFIG_GESTOS.margemMaoOmbro - 0.01 };
+      expect(medirMaos(p)).toEqual({ direita: true, esquerda: false });
+      p[15] = { ...p[15]!, y: 0.45 - CONFIG_GESTOS.margemMaoOmbro + 0.01 };   // dentro da margem: não conta
+      expect(medirMaos(p).esquerda).toBe(false);
+    });
+    it('medirCabeca: inclinação em graus pelas orelhas e queixo pelo nariz', () => {
+      const p = base();
+      expect(medirCabeca(p).rollGraus).toBeCloseTo(0, 5);
+      expect(medirCabeca(p).queixo).toBeCloseTo(-0.3, 5);
+      p[7] = { ...p[7]!, y: 0.3 - Math.tan((20 * Math.PI) / 180) * 0.05 };
+      p[8] = { ...p[8]!, y: 0.3 + Math.tan((20 * Math.PI) / 180) * 0.05 };
+      expect(medirCabeca(p).rollGraus).toBeCloseTo(20, 3);
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/gestos-medidas.test.ts`. Esperado: FAIL (as funções não existem).
+- [ ] Em `src/core/gestos.ts`:
+  - trocar `type Config = typeof CONFIG_GESTOS;` por `export type ConfigGestos = typeof CONFIG_GESTOS;\ntype Config = ConfigGestos;`
+  - acrescentar, logo depois de `function presenca(...)`:
+    ```ts
+    export interface MedidaMaos { direita: boolean; esquerda: boolean }
+
+    /** Mão acima do ombro pela regra do modo Mão (AC-9.7). Lados anatômicos do jogador. */
+    export function medirMaos(pose: Pose, cfg: Config = CONFIG_GESTOS): MedidaMaos {
+      const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
+      return { direita: acima(PUNHO_D, OMBRO_D), esquerda: acima(PUNHO_E, OMBRO_E) };
+    }
+
+    export interface MedidaCabeca { rollGraus: number; queixo: number }
+
+    /** Inclinação (graus; + = própria direita) e queixo (+ = olhando para cima) do modo Cabeça (AC-9.10, AC-9.11). */
+    export function medirCabeca(pose: Pose): MedidaCabeca {
+      const oe = pose[ORELHA_E]!, od = pose[ORELHA_D]!, nariz = pose[NARIZ]!;
+      const dist = Math.max(Math.abs(oe.x - od.x), 1e-6);
+      // Orelha direita mais baixa que a esquerda = cabeça inclinada para a própria direita.
+      const rollGraus = (Math.atan2(od.y - oe.y, dist) * 180) / Math.PI;
+      // Nariz subindo em relação às orelhas = queixo para cima.
+      const queixo = ((oe.y + od.y) / 2 - nariz.y) / dist;
+      return { rollGraus, queixo };
+    }
+    ```
+  - em `interpretadorMao`, trocar as três linhas `const acima = …`, `const dir = …` e `const esq = …` por `const { direita: dir, esquerda: esq } = medirMaos(pose, cfg);`
+  - em `interpretadorCabeca`, trocar o bloco que calcula `oe`, `od`, `nariz`, `dist`, `roll` e `q` (com os dois comentários) por `const { rollGraus: roll, queixo: q } = medirCabeca(pose);`
+- [ ] Rodar `npx vitest run src/core`. Esperado: PASS, com todos os testes antigos de gestos (`gestos.test.ts`, `gestos-modos.test.ts`) inalterados e passando.
+- [ ] Commit: `refactor(gestos): share hand and head measurements (Phase 19.1: Medidas compartilhadas)`
+
+### 19.2 Registro de diagnóstico (núcleo)
+
+- [ ] Escrever `src/core/diagnostico.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { criarRegistro, extrairPontos, type Amostra } from './diagnostico';
+  import type { Pose } from './gestos';
+
+  const amostra = (t: number, over: Partial<Amostra> = {}): Amostra => ({
+    t, dtMs: 33, deteccaoMs: 20, pessoas: 1, tela: 'card', modo: 'mao', pontos: {}, medidas: {}, gestos: [], ...over,
+  });
+
+  describe('extrairPontos', () => {
+    it('pega nariz, orelhas, ombros e punhos com x, y e confiança (3 casas)', () => {
+      const pose: Pose = Array.from({ length: 33 }, (_, i) => ({ x: i / 100, y: 0.123456, visibility: 0.98765 }));
+      const p = extrairPontos(pose);
+      expect(Object.keys(p).sort()).toEqual(['nariz', 'ombroD', 'ombroE', 'orelhaD', 'orelhaE', 'punhoD', 'punhoE']);
+      expect(p.punhoD).toEqual({ x: 0.16, y: 0.123, conf: 0.988 });
+      expect(extrairPontos(null)).toEqual({});
+    });
+    it('confiança ausente vira 0', () => {
+      const pose: Pose = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5 }));
+      expect(extrairPontos(pose).nariz!.conf).toBe(0);
+    });
+  });
+
+  describe('criarRegistro', () => {
+    it('AC-12.4: guarda só a janela de 60 s', () => {
+      const r = criarRegistro();
+      for (let t = 0; t <= 70_000; t += 1000) r.adicionar(amostra(t));
+      const exp = r.exportar();
+      expect(exp.amostras[0]!.t).toBe(10_000);
+      expect(exp.amostras.at(-1)!.t).toBe(70_000);
+    });
+    it('AC-12.3: resumo do último segundo (quadros, detecção média e máxima, gestos dos últimos 5 s)', () => {
+      const r = criarRegistro();
+      r.adicionar(amostra(500, { gestos: ['direita'] }));
+      r.adicionar(amostra(5600, { deteccaoMs: 100 }));
+      r.adicionar(amostra(5800, { deteccaoMs: 140 }));
+      r.adicionar(amostra(6000, { deteccaoMs: null, gestos: ['maosParaCima'] }));
+      const res = r.resumo(6000);
+      expect(res.fps).toBe(3);
+      expect(res.deteccaoMediaMs).toBe(120);
+      expect(res.deteccaoMaxMs).toBe(140);
+      expect(res.gestosRecentes).toEqual(['maosParaCima']);
+      expect(r.ultima()!.t).toBe(6000);
+    });
+    it('sem amostras com detecção, as médias são null', () => {
+      const r = criarRegistro();
+      r.adicionar(amostra(100, { deteccaoMs: null }));
+      expect(r.resumo(100)).toMatchObject({ fps: 1, deteccaoMediaMs: null, deteccaoMaxMs: null });
+    });
+    it('AC-12.4: exportar devolve versão, data e cópia das amostras', () => {
+      const r = criarRegistro(60_000, () => '2026-10-28T12:00:00.000Z');
+      r.adicionar(amostra(1));
+      const exp = r.exportar();
+      expect(exp).toMatchObject({ versao: 1, geradoEm: '2026-10-28T12:00:00.000Z' });
+      exp.amostras.pop();
+      expect(r.exportar().amostras).toHaveLength(1);
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/diagnostico.test.ts`. Esperado: FAIL.
+- [ ] Criar `src/core/diagnostico.ts`:
+  ```ts
+  import type { Gesto, MedidaCabeca, MedidaMaos, Pose } from './gestos';
+  import type { ModoJogo } from './modos';
+
+  /** Pontos do MediaPipe Pose guardados no diagnóstico (lados anatômicos do jogador). */
+  export const PONTOS_DIAGNOSTICO = { nariz: 0, orelhaE: 7, orelhaD: 8, ombroE: 11, ombroD: 12, punhoE: 15, punhoD: 16 } as const;
+  export type NomePonto = keyof typeof PONTOS_DIAGNOSTICO;
+  export interface PontoMedido { x: number; y: number; conf: number }
+
+  export interface Amostra {
+    t: number;
+    dtMs: number;
+    /** null quando não houve detecção (sem câmera ou menu aberto sem rastreador). */
+    deteccaoMs: number | null;
+    pessoas: number;
+    tela: string;
+    modo: ModoJogo;
+    pontos: Partial<Record<NomePonto, PontoMedido>>;
+    medidas: { maos?: MedidaMaos; cabeca?: MedidaCabeca };
+    gestos: Gesto[];
+  }
+
+  const arred = (v: number) => Math.round(v * 1000) / 1000;
+
+  export function extrairPontos(pose: Pose | null): Amostra['pontos'] {
+    if (!pose) return {};
+    const out: Amostra['pontos'] = {};
+    for (const [nome, i] of Object.entries(PONTOS_DIAGNOSTICO) as [NomePonto, number][]) {
+      const p = pose[i];
+      if (p) out[nome] = { x: arred(p.x), y: arred(p.y), conf: arred(p.visibility ?? 0) };
+    }
+    return out;
+  }
+
+  export interface Resumo {
+    fps: number;
+    deteccaoMediaMs: number | null;
+    deteccaoMaxMs: number | null;
+    gestosRecentes: Gesto[];
+  }
+
+  export interface Registro {
+    adicionar(a: Amostra): void;
+    resumo(agora: number): Resumo;
+    ultima(): Amostra | null;
+    exportar(): { versao: 1; geradoEm: string; amostras: Amostra[] };
+  }
+
+  export function criarRegistro(janelaMs = 60_000, agoraIso: () => string = () => new Date().toISOString()): Registro {
+    let amostras: Amostra[] = [];
+    return {
+      adicionar(a) {
+        amostras.push(a);
+        const limite = a.t - janelaMs;
+        if (amostras[0]!.t < limite) amostras = amostras.filter((x) => x.t >= limite);
+      },
+      resumo(agora) {
+        const ultimoSegundo = amostras.filter((a) => a.t > agora - 1000);
+        const det = ultimoSegundo.map((a) => a.deteccaoMs).filter((d): d is number => d !== null);
+        return {
+          fps: ultimoSegundo.length,
+          deteccaoMediaMs: det.length ? Math.round(det.reduce((s, d) => s + d, 0) / det.length) : null,
+          deteccaoMaxMs: det.length ? Math.round(Math.max(...det)) : null,
+          gestosRecentes: amostras.filter((a) => a.t > agora - 5000).flatMap((a) => a.gestos),
+        };
+      },
+      ultima() {
+        return amostras.at(-1) ?? null;
+      },
+      exportar() {
+        return { versao: 1, geradoEm: agoraIso(), amostras: [...amostras] };
+      },
+    };
+  }
+  ```
+- [ ] Rodar `npx vitest run src/core`. Esperado: PASS.
+- [ ] Commit: `feat(diagnostico): 60 s in-memory measurement log (Phase 19.2: Registro)`
+
+### 19.3 Painel, gravação no laço e download
+
+- [ ] Escrever `src/app/PainelDiagnostico.test.tsx`:
+  ```tsx
+  // @vitest-environment jsdom
+  import { fireEvent, render, screen } from '@testing-library/react';
+  import { describe, expect, it, vi } from 'vitest';
+  import { criarRegistro } from '../core/diagnostico';
+  import { PainelDiagnostico } from './PainelDiagnostico';
+
+  describe('PainelDiagnostico', () => {
+    it('AC-12.3: mostra quadros, detecção, pessoas, pontos, mãos, cabeça e gestos', () => {
+      const r = criarRegistro();
+      const agora = performance.now();
+      r.adicionar({
+        t: agora, dtMs: 140, deteccaoMs: 138, pessoas: 1, tela: 'card', modo: 'mao',
+        pontos: { punhoD: { x: 0.3, y: 0.31, conf: 0.92 }, punhoE: { x: 0.7, y: 0.71, conf: 0.4 }, ombroD: { x: 0.4, y: 0.45, conf: 0.99 }, ombroE: { x: 0.6, y: 0.46, conf: 0.98 } },
+        medidas: { maos: { direita: true, esquerda: false }, cabeca: { rollGraus: 3.2, queixo: -0.28 } },
+        gestos: ['direita'],
+      });
+      render(<PainelDiagnostico registro={r} onBaixar={() => {}} />);
+      const painel = screen.getByRole('complementary', { name: 'Diagnóstico' });
+      expect(painel).toHaveTextContent('quadros/s: 1');
+      expect(painel).toHaveTextContent('detecção: 138 ms (máx 138 ms)');
+      expect(painel).toHaveTextContent('pessoas: 1 · modo: Mão · tela: card');
+      expect(painel).toHaveTextContent('punho D: y=0.31 conf 0.92 · acima do ombro');
+      expect(painel).toHaveTextContent('punho E: y=0.71 conf 0.40');
+      expect(painel).toHaveTextContent('ombros: y=0.45 / 0.46');
+      expect(painel).toHaveTextContent('cabeça: 3.2° · queixo -0.28');
+      expect(painel).toHaveTextContent('gestos (5 s): direita');
+    });
+    it('sem câmera, a detecção mostra "sem câmera"', () => {
+      const r = criarRegistro();
+      r.adicionar({ t: performance.now(), dtMs: 16, deteccaoMs: null, pessoas: 0, tela: 'espera', modo: 'corpo', pontos: {}, medidas: {}, gestos: [] });
+      render(<PainelDiagnostico registro={r} onBaixar={() => {}} />);
+      expect(screen.getByRole('complementary', { name: 'Diagnóstico' })).toHaveTextContent('detecção: sem câmera');
+    });
+    it('AC-12.4: o botão chama onBaixar', () => {
+      const baixar = vi.fn();
+      render(<PainelDiagnostico registro={criarRegistro()} onBaixar={baixar} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Baixar registro (60 s)' }));
+      expect(baixar).toHaveBeenCalledOnce();
+    });
+  });
+  ```
+- [ ] Escrever `tests/e2e/diagnostico.spec.ts`:
+  ```ts
+  import { readFile } from 'node:fs/promises';
+  import { expect, test, type Page } from '@playwright/test';
+
+  const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
+
+  async function abrirSemCamera(page: Page, url: string) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: () => Promise.reject(new Error('x')) } });
+    });
+    await page.goto(url);
+    await expect(page.getByText(CAMERA_OFF)).toBeVisible();
+  }
+
+  test('AC-12.1: sem ?diagnostico não há painel', async ({ page }) => {
+    await abrirSemCamera(page, '/');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('article')).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Diagnóstico' })).toHaveCount(0);
+  });
+
+  test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o card, registro baixável, nada na rede', async ({ page }) => {
+    const externas: string[] = [];
+    page.on('request', (r) => { if (!r.url().startsWith('http://localhost:4173')) externas.push(r.url()); });
+    await abrirSemCamera(page, '/?diagnostico');
+    const painel = page.getByRole('complementary', { name: 'Diagnóstico' });
+    await expect(painel).toBeVisible();
+    await expect(painel).toContainText('detecção: sem câmera');
+    await expect(painel).toContainText(/quadros\/s: [1-9]/);
+
+    await page.keyboard.press('Enter');
+    const card = page.locator('article');
+    await expect(card).toBeVisible();
+    const [a, b] = [(await painel.boundingBox())!, (await card.boundingBox())!];
+    expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y).toBe(true);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Baixar registro (60 s)' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^match-do-saber-diagnostico-.*\.json$/);
+    const dados = JSON.parse(await readFile((await download.path())!, 'utf8'));
+    expect(dados.versao).toBe(1);
+    expect(dados.amostras.length).toBeGreaterThan(10);
+    expect(dados.amostras.at(-1)).toMatchObject({ tela: 'card', deteccaoMs: null, pessoas: 0 });
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => !k.startsWith('match-do-saber:')))).toEqual([]);
+    expect(externas).toEqual([]);
+  });
+
+  test.describe('com câmera falsa', () => {
+    test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] }, permissions: ['camera'] });
+    test('AC-12.3: com a câmera ativa, o painel mostra o tempo de detecção em ms', async ({ page }) => {
+      test.setTimeout(60_000);
+      await page.goto('/?diagnostico');
+      await page.waitForSelector('video', { state: 'visible', timeout: 30_000 });
+      await expect(page.getByRole('complementary', { name: 'Diagnóstico' })).toContainText(/detecção: \d+ ms \(máx \d+ ms\)/, { timeout: 30_000 });
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/app` e `npm run fixture && npx vite build && npx playwright test tests/e2e/diagnostico.spec.ts`. Esperado: FAIL (exceto AC-12.1, que já passa: não há painel algum).
+- [ ] Criar `src/app/baixar.ts`:
+  ```ts
+  /** Salva `dados` como arquivo JSON no computador (download local; nada vai para a rede). */
+  export function baixarJson(dados: unknown, nome = `match-do-saber-diagnostico-${new Date().toISOString().replace(/[:.]/g, '-')}.json`): void {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nome;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+  ```
+- [ ] Criar `src/app/PainelDiagnostico.tsx`:
+  ```tsx
+  import { useEffect, useState } from 'react';
+  import type { PontoMedido, Registro } from '../core/diagnostico';
+  import { MODO_ROTULO } from '../core/modos';
+  import s from './App.module.css';
+
+  const n2 = (v: number) => v.toFixed(2);
+  const linhaPunho = (rotulo: string, p: PontoMedido | undefined, acima: boolean | undefined) =>
+    p ? `${rotulo}: y=${n2(p.y)} conf ${n2(p.conf)}${acima ? ' · acima do ombro' : ''}` : `${rotulo}: —`;
+
+  /** Painel do modo de diagnóstico (FR-12, AC-12.3); atualiza a cada 500 ms. */
+  export function PainelDiagnostico({ registro, onBaixar }: { registro: Registro; onBaixar: () => void }) {
+    const [agora, setAgora] = useState(() => performance.now());
+    useEffect(() => {
+      const id = setInterval(() => setAgora(performance.now()), 500);
+      return () => clearInterval(id);
+    }, []);
+    const r = registro.resumo(agora);
+    const a = registro.ultima();
+    const det = r.deteccaoMediaMs === null ? 'sem câmera' : `${r.deteccaoMediaMs} ms (máx ${r.deteccaoMaxMs} ms)`;
+    const od = a?.pontos.ombroD, oe = a?.pontos.ombroE;
+    const cab = a?.medidas.cabeca;
+    return (
+      <aside className={s.diagnostico} aria-label="Diagnóstico">
+        <p>{`quadros/s: ${r.fps}`}</p>
+        <p>{`detecção: ${det}`}</p>
+        <p>{`pessoas: ${a?.pessoas ?? 0} · modo: ${a ? MODO_ROTULO[a.modo] : '—'} · tela: ${a?.tela ?? '—'}`}</p>
+        <p>{linhaPunho('punho D', a?.pontos.punhoD, a?.medidas.maos?.direita)}</p>
+        <p>{linhaPunho('punho E', a?.pontos.punhoE, a?.medidas.maos?.esquerda)}</p>
+        <p>{od && oe ? `ombros: y=${n2(od.y)} / ${n2(oe.y)}` : 'ombros: —'}</p>
+        <p>{cab ? `cabeça: ${cab.rollGraus.toFixed(1)}° · queixo ${n2(cab.queixo)}` : 'cabeça: —'}</p>
+        <p>{`gestos (5 s): ${r.gestosRecentes.join(', ') || '—'}`}</p>
+        <button type="button" onClick={(e) => { e.currentTarget.blur(); onBaixar(); }}>Baixar registro (60 s)</button>
+      </aside>
+    );
+  }
+  ```
+- [ ] Alterar `src/app/useJogo.ts`:
+  - imports: `import { extrairPontos, type Registro } from '../core/diagnostico';` e acrescentar `medirCabeca, medirMaos` ao import de `../core/gestos`.
+  - assinatura: `export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADRAO, pausado = false, registro?: Registro) {`
+  - logo depois de `pausadoRef.current = pausado;`:
+    ```ts
+    // Só para o modo de diagnóstico (FR-12): o laço lê a tela e o modo atuais sem recriar o efeito.
+    const diagRef = useRef({ registro, tela: estado.tela as string, modo: config.modo });
+    diagRef.current = { registro, tela: estado.tela, modo: config.modo };
+    ```
+    (`estado` já existe nesse ponto do hook: se a declaração de `estado` vier depois, mover estas duas linhas para logo depois dela.)
+  - no laço, trocar o ramo com rastreador por:
+    ```ts
+    if (r && video && video.readyState >= 2) {
+      const antesDeteccao = performance.now();
+      const poses = r.detectar(video, agora);
+      const deteccaoMs = performance.now() - antesDeteccao;
+      const pose = escolherJogador(poses);
+      poseRef.current = pose;
+      const leitura = interp.current.ler(pose, agora);
+      // Com o menu "Configurações" aberto, a câmera não gera presença nem gestos.
+      inclinacaoRef.current = pausadoRef.current ? 0 : leitura.inclinacao;
+      despachar({ tipo: 'tick', dtMs, presenca: pausadoRef.current ? null : leitura.presenca });
+      if (!pausadoRef.current) for (const g of leitura.gestos) despachar(EVENTO_DO_GESTO[g]);
+      const d = diagRef.current;
+      d.registro?.adicionar({
+        t: agora, dtMs, deteccaoMs, pessoas: poses.length, tela: d.tela, modo: d.modo,
+        pontos: extrairPontos(pose),
+        medidas: pose ? { maos: medirMaos(pose), cabeca: medirCabeca(pose) } : {},
+        gestos: pausadoRef.current ? [] : leitura.gestos,
+      });
+    } else {
+    ```
+    e, no fim do ramo `else` (depois do `despachar({ tipo: 'tick', … presenca: null })`):
+    ```ts
+      const d = diagRef.current;
+      d.registro?.adicionar({ t: agora, dtMs, deteccaoMs: null, pessoas: 0, tela: d.tela, modo: d.modo, pontos: {}, medidas: {}, gestos: [] });
+    ```
+- [ ] Alterar `src/app/App.tsx`, função `Jogo`:
+  ```tsx
+  import { criarRegistro } from '../core/diagnostico';
+  import { baixarJson } from './baixar';
+  import { PainelDiagnostico } from './PainelDiagnostico';
+  // ...
+  // Modo de diagnóstico (FR-12): só com ?diagnostico no endereço.
+  const diagnostico = useMemo(() => (new URLSearchParams(window.location.search).has('diagnostico') ? criarRegistro() : undefined), []);
+  const { estado, despachar, camera, videoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto, diagnostico);
+  ```
+  e, no retorno, logo antes do `<CameraPreview …/>`:
+  ```tsx
+  {diagnostico && <PainelDiagnostico registro={diagnostico} onBaixar={() => baixarJson(diagnostico.exportar())} />}
+  ```
+  (`useMemo` entra no import de `react`.)
+- [ ] Acrescentar a `src/app/App.module.css`:
+  ```css
+  /* Modo de diagnóstico (FR-12): canto superior esquerdo, abaixo do "✕ Sair", fora da coluna do card. */
+  .diagnostico { position: absolute; top: 4.5rem; left: 1rem; z-index: 4; max-width: 19rem; box-sizing: border-box; padding: 0.6rem 0.8rem; border-radius: 0.5rem; background: rgb(0 0 0 / 0.78); color: #7cff6b; font: 0.85rem/1.35 ui-monospace, Menlo, monospace; }
+  .diagnostico p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diagnostico button { margin-top: 0.5rem; font: inherit; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid #7cff6b; background: transparent; color: #7cff6b; cursor: pointer; }
+  ```
+- [ ] Em `docs/operacao.md`, acrescentar ao fim:
+  ```markdown
+  ## Diagnóstico do rastreio (equipe técnica)
+  Para medir o rastreio no notebook do estande antes de ajustar os gestos:
+  1. Abrir o jogo com `?diagnostico` no fim do endereço (por exemplo `…/match-do-saber/?diagnostico`). O operador do evento usa o endereço normal.
+  2. Com a câmera ligada, ficar a ~1,5–2 m (ou sentado, nos modos Mão e Cabeça) e jogar uma partida em cada modo, levantando cada mão e as duas, inclinando a cabeça e levantando o queixo.
+  3. Logo depois de cada tentativa, clicar em "Baixar registro (60 s)" e enviar o arquivo `.json` para a equipe técnica, dizendo o modo e o que tentou fazer.
+  O painel mostra quadros por segundo e tempo de detecção (meta: ≥ 15 quadros/s), e o registro não contém imagens da câmera.
+  ```
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 27 + 3 = 30).
+- [ ] Commit: `feat(app): diagnostic panel and downloadable log behind ?diagnostico (Phase 19.3: Painel e registro)`
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -4291,6 +4750,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-9 (v1.1.0, reescrito v2.0.0) | 8, 9, 10, 11 |
   | FR-10 (v2.0.0) | 10, 12 |
   | FR-11 (v2.0.0) | 10, 11 |
+  | FR-12 (v5.2.0) | 19 |
 
 - **ACs:** todas as 38 (AC-1.1–1.6, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.6, 6.1–6.4, 7.1–7.5, 8.1–8.3) aparecem num `Satisfies`. AC-1.5, 2.1–2.4, 2.6, 3.1 e 7.1 têm teste automatizado da lógica e verificação manual com hardware ou planilha real na Fase 7.
 - **Limitação conhecida:** o cenário de erro "jogo aberto offline antes de qualquer abertura online" só pode mostrar a mensagem da spec quando o shell do app já está em cache. Na primeiríssima abertura sem rede, o navegador mostra a própria página de erro, porque não há código do app para rodar. O app cobre o caso parcial (shell presente, catálogo ausente ou inválido).
@@ -4314,3 +4774,4 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 5.0.0 | 16 | Adicionada: tempo corre com o saiba mais aberto |
 | 5.0.0 | 17 | Adicionada: verificação no hardware |
 | 5.1.0 | 18 | Adicionada: botão ⚙ no canto superior direito e menu como painel lateral |
+| 5.2.0 | 19 | Adicionada: modo de diagnóstico (?diagnostico) com painel e registro baixável |
