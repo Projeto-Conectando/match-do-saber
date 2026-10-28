@@ -63,3 +63,7 @@
   0%, 100% { box-shadow: 0 0 0 0 rgb(255 59 59 / 0.6); transform: scale(1); }
   50% { box-shadow: 0 0 36px 12px rgb(255 59 59 / 0.85); transform: scale(1.03); }
 }
+/* Modo de diagnóstico (FR-12): canto superior esquerdo, abaixo do "✕ Sair", fora da coluna do card. */
+.diagnostico { position: absolute; top: 4.5rem; left: 1rem; z-index: 4; max-width: 19rem; box-sizing: border-box; padding: 0.6rem 0.8rem; border-radius: 0.5rem; background: rgb(0 0 0 / 0.78); color: #7cff6b; font: 0.85rem/1.35 ui-monospace, Menlo, monospace; }
+.diagnostico p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diagnostico button { margin-top: 0.5rem; font: inherit; padding: 0.3rem 0.6rem; border-radius: 0.4rem; border: 1px solid #7cff6b; background: transparent; color: #7cff6b; cursor: pointer; }

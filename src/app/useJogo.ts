@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { criarInterpretador, escolherJogador, type Gesto, type Pose } from '../core/gestos';
+import { extrairPontos, type Registro } from '../core/diagnostico';
+import { criarInterpretador, escolherJogador, medirCabeca, medirMaos, type Gesto, type Pose } from '../core/gestos';
 import { CONFIG_PADRAO, type Configuracoes } from '../core/modos';
 import { ESTADO_INICIAL, reduzir, type Contexto, type Estado, type Evento } from '../core/partida';
 import { dtDoQuadro } from '../core/relogio';
@@ -22,7 +23,7 @@ const EVENTO_DA_TECLA: Record<string, Evento | undefined> = {
   Escape: { tipo: 'sair' }, // FR-10
 };
 
-export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADRAO, pausado = false) {
+export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADRAO, pausado = false, registro?: Registro) {
   const [camera, setCamera] = useState<StatusCamera>('carregando');
   const ctx = useRef<Contexto>({ noticias, rng: Math.random, cameraAtiva: false, tempoCardMs: config.tempoCardS * 1000 });
   ctx.current = { noticias, rng: Math.random, cameraAtiva: camera === 'ativa', tempoCardMs: config.tempoCardS * 1000 };
@@ -34,6 +35,9 @@ export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADR
   const interp = useRef(criarInterpretador(config.modo));
   const pausadoRef = useRef(pausado);
   pausadoRef.current = pausado;
+  // Só para o modo de diagnóstico (FR-12): o laço lê a tela e o modo atuais sem recriar o efeito.
+  const diagRef = useRef({ registro, tela: estado.tela as string, modo: config.modo });
+  diagRef.current = { registro, tela: estado.tela, modo: config.modo };
   const rastreador = useRef<Rastreador | null>(null);
   const telaAnterior = useRef(estado.tela);
 
@@ -99,17 +103,29 @@ export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADR
       const video = videoRef.current;
       const r = rastreador.current;
       if (r && video && video.readyState >= 2) {
-        const pose = escolherJogador(r.detectar(video, agora));
+        const antesDeteccao = performance.now();
+        const poses = r.detectar(video, agora);
+        const deteccaoMs = performance.now() - antesDeteccao;
+        const pose = escolherJogador(poses);
         poseRef.current = pose;
         const leitura = interp.current.ler(pose, agora);
         // Com o menu "Configurações" aberto, a câmera não gera presença nem gestos.
         inclinacaoRef.current = pausadoRef.current ? 0 : leitura.inclinacao;
         despachar({ tipo: 'tick', dtMs, presenca: pausadoRef.current ? null : leitura.presenca });
         if (!pausadoRef.current) for (const g of leitura.gestos) despachar(EVENTO_DO_GESTO[g]);
+        const d = diagRef.current;
+        d.registro?.adicionar({
+          t: agora, dtMs, deteccaoMs, pessoas: poses.length, tela: d.tela, modo: d.modo,
+          pontos: extrairPontos(pose),
+          medidas: pose ? { maos: medirMaos(pose), cabeca: medirCabeca(pose) } : {},
+          gestos: pausadoRef.current ? [] : leitura.gestos,
+        });
       } else {
         poseRef.current = null;
         inclinacaoRef.current = 0;
         despachar({ tipo: 'tick', dtMs, presenca: null });
+        const d = diagRef.current;
+        d.registro?.adicionar({ t: agora, dtMs, deteccaoMs: null, pessoas: 0, tela: d.tela, modo: d.modo, pontos: {}, medidas: {}, gestos: [] });
       }
       raf = requestAnimationFrame(quadro);
     };
