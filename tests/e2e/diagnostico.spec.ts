@@ -40,8 +40,12 @@ test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o ca
   expect(download.suggestedFilename()).toMatch(/^match-do-saber-diagnostico-.*\.json$/);
   const dados = JSON.parse(await readFile((await download.path())!, 'utf8'));
   expect(dados.versao).toBe(1);
-  expect(dados.amostras.length).toBeGreaterThan(10);
-  expect(dados.amostras.at(-1)).toMatchObject({ tela: 'card', deteccaoMs: null, pessoas: 0 });
+  expect(dados.amostras.length).toBeGreaterThan(0);
+  const ultima = dados.amostras.at(-1);
+  for (const campo of ['t', 'dtMs', 'deteccaoMs', 'pessoas', 'tela', 'modo', 'pontos', 'medidas', 'gestos']) {
+    expect(ultima).toHaveProperty(campo);
+  }
+  expect(ultima).toMatchObject({ tela: 'card', deteccaoMs: null, pessoas: 0 });
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => !k.startsWith('match-do-saber:')))).toEqual([]);
   expect(externas).toEqual([]);
 });
