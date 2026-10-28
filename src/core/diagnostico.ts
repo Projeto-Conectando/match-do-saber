@@ -42,10 +42,15 @@ export interface Registro {
   adicionar(a: Amostra): void;
   resumo(agora: number): Resumo;
   ultima(): Amostra | null;
-  exportar(): { versao: 1; geradoEm: string; amostras: Amostra[] };
+  /** `inicioPaginaMs`: ms desde 1970 da abertura da página; o horário de cada amostra é `inicioPaginaMs + t`. */
+  exportar(): { versao: 1; geradoEm: string; inicioPaginaMs: number; amostras: Amostra[] };
 }
 
-export function criarRegistro(janelaMs = 60_000, agoraIso: () => string = () => new Date().toISOString()): Registro {
+export function criarRegistro(
+  janelaMs = 60_000,
+  agoraIso: () => string = () => new Date().toISOString(),
+  inicioPagina: () => number = () => performance.timeOrigin,
+): Registro {
   let amostras: Amostra[] = [];
   return {
     adicionar(a) {
@@ -67,7 +72,7 @@ export function criarRegistro(janelaMs = 60_000, agoraIso: () => string = () => 
       return amostras.at(-1) ?? null;
     },
     exportar() {
-      return { versao: 1, geradoEm: agoraIso(), amostras: [...amostras] };
+      return { versao: 1, geradoEm: agoraIso(), inicioPaginaMs: inicioPagina(), amostras: [...amostras] };
     },
   };
 }

@@ -54,4 +54,11 @@ describe('criarRegistro', () => {
     exp.amostras.pop();
     expect(r.exportar().amostras).toHaveLength(1);
   });
+  it('AC-12.4: exportar devolve o início da página em ms desde 1970, para o horário de cada amostra', () => {
+    const r = criarRegistro(60_000, () => '2026-10-28T12:00:00.000Z', () => 1_793_188_800_000);
+    r.adicionar(amostra(1500));
+    const exp = r.exportar();
+    expect(exp.inicioPaginaMs).toBe(1_793_188_800_000);
+    expect(new Date(exp.inicioPaginaMs + exp.amostras[0]!.t).toISOString()).toBe('2026-10-28T12:00:01.500Z');
+  });
 });

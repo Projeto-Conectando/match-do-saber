@@ -33,3 +33,5 @@ Para medir o rastreio no notebook do estande antes de ajustar os gestos:
 3. Logo depois de cada tentativa, clicar em "Baixar registro (60 s)" e enviar o arquivo `.json` para a equipe técnica, dizendo o modo e o que tentou fazer.
 
 O painel mostra quadros por segundo e tempo de detecção (meta: ≥ 15 quadros/s), e o registro não contém imagens da câmera.
+
+Cada amostra tem `t` em ms desde a abertura da página; o horário é `inicioPaginaMs + t` (milissegundos desde 1970).
