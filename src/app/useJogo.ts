@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { criarInterpretador, escolherJogador, type Gesto, type Pose } from '../core/gestos';
 import { CONFIG_PADRAO, type Configuracoes } from '../core/modos';
 import { ESTADO_INICIAL, reduzir, type Contexto, type Estado, type Evento } from '../core/partida';
+import { dtDoQuadro } from '../core/relogio';
 import type { Noticia } from '../core/types';
 import { abrirCamera, criarRastreador, type Rastreador } from './rastreador';
 
@@ -93,7 +94,7 @@ export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADR
     let raf = 0;
     let anterior = performance.now();
     const quadro = (agora: number) => {
-      const dtMs = Math.min(agora - anterior, 100);
+      const dtMs = dtDoQuadro(agora, anterior);
       anterior = agora;
       const video = videoRef.current;
       const r = rastreador.current;
