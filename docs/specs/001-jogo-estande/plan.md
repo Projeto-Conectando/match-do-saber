@@ -12,6 +12,7 @@
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
 - (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
+- (v5.0.0) O cronômetro do card só pausa por "Volte para o centro": com o "saiba mais" aberto o tempo corre e a barra diminui; o "saiba mais" não fecha sozinho.
 - (v4.0.0) Card parado até a escolha (sem inclinar com o corpo/cabeça); cronômetro numa barra grossa na base da tela com os segundos; nos últimos 5 s barra vermelha e card pulsando em vermelho (pausado, não pulsa).
 - (v3.0.0) Início só manual: a câmera nunca inicia nada; "▶ Iniciar" ou Enter na espera abre a calibração (câmera ativa) ou começa direto (sem câmera); Enter na calibração a pula. Sair, ausência de 10 s e o fim de calibração vazia deixam o jogo na espera.
 - (v2.0.0) Menu "Configurações": modo, tempo por card (10, 15, 20, 25, 30 s) e som (ligado/desligado). Botões "▶ Iniciar" (= Enter) e "✕ Sair" (= Esc, encerra sem resumo). Sons sintetizados: deslizar na escolha, positivo no acerto, erro no erro e no tempo esgotado. Card centralizado na vertical.
@@ -4086,6 +4087,99 @@ Decisões técnicas (inline):
 
 ---
 
+## Phase 16 (added v5.0.0): Tempo corre com o "saiba mais" aberto
+
+**Implements:** FR-1 (reescrito), FR-4 | **Satisfies:** AC-3.1, AC-3.2, AC-3.3, AC-4.3, AC-4.6, AC-4.7, AC-5.3
+**Files:** `src/core/partida.ts`, `src/core/partida.test.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `tests/e2e/barra-tempo.spec.ts`
+**Interfaces:** Consumes: `reduzir`, `EstadoCard`, `TEMPOS` (`src/core/partida.ts`); `TelaCard`, `BarraTempo` (`src/app/Telas.tsx`, Fases 10 e 14). Produces: nenhum nome novo. `EstadoCard` perde o campo `saibaMaisOciosoMs` e `TEMPOS` perde `saibaMaisOciosoMs`; o cronômetro do card só pausa por ausência.
+
+Causa raiz (investigação do bug "a barrinha trava com o saiba mais"): no `case 'card'` de `reduzir`, o ramo `if (base.saibaMais)` só incrementava `saibaMaisOciosoMs` e retornava antes de descontar `restanteMs`. Com `restanteMs` constante, a barra de tempo e a sua animação (largura com `transition`) ficavam paradas; depois de 5 s sem gesto, o "saiba mais" fechava sozinho e o tempo voltava. Isso era o que a spec v1.x–v4.0.0 mandava (AC-3.1, AC-3.2, AC-3.5, FR-1); a v5.0.0 reescreve. Reproduzido em 6 passos: com o "saiba mais" aberto o `restanteMs` ficou em 11,0 s por 4,9 s.
+
+Itens invalidados pela v5.0.0:
+- o teste `AC-3.1/AC-3.2: saiba mais pausa e retoma o cronômetro`
+- o teste `AC-3.5: saiba mais fecha sozinho após 5 s`
+- o teste de E2E `AC-4.7 … com "saiba mais" aberto, não` (agora o card pulsa)
+- o caso `saiba mais` do `it.each` de AC-4.7 em `Telas.test.tsx`
+- o campo `saibaMaisOciosoMs` e a constante `TEMPOS.saibaMaisOciosoMs`
+
+- [ ] Em `src/core/partida.test.ts`, substituir os dois testes invalidados por:
+  ```ts
+  it('AC-3.1/AC-3.2 (v5.0.0): o cronômetro continua correndo com o saiba mais aberto', () => {
+    const s = rodar(emCard(), [tick(1000), { tipo: 'saibaMais' }, tick(3000)]);
+    expect(s).toMatchObject({ saibaMais: true, restanteMs: 11000 });
+    expect(rodar(s, [{ tipo: 'saibaMais' }, tick(1000)])).toMatchObject({ saibaMais: false, restanteMs: 10000 });
+  });
+  it('v5.0.0: o saiba mais não fecha sozinho; o tempo esgotando leva ao feedback "tempo" (AC-4.3)', () => {
+    const s = rodar(emCard(), [{ tipo: 'saibaMais' }, tick(10000)]);
+    expect(s).toMatchObject({ tela: 'card', saibaMais: true, restanteMs: 5000 });
+    const fim = rodar(s, [tick(5000)]);
+    if (fim.tela !== 'feedback') throw new Error(fim.tela);
+    expect(fim.partida.resultados).toEqual(['tempo']);
+  });
+  it('AC-5.3 (v5.0.0): "Volte para o centro" ainda pausa o cronômetro, mesmo com o saiba mais aberto', () => {
+    const s = rodar(emCardCalibrado(), [{ tipo: 'saibaMais' }, tick(1000), tick(4000, ninguem)]);
+    expect(s).toMatchObject({ saibaMais: true, ausenteMs: 4000, restanteMs: 14000 });
+  });
+  ```
+- [ ] Em `src/app/Telas.test.tsx`, substituir o `it.each([['saiba mais', …], ['Volte para o centro', …]])` de AC-4.7 por:
+  ```tsx
+  it('AC-4.7 (v5.0.0): pausado por "Volte para o centro" não pulsa', () => {
+    const { container } = render(<TelaCard {...props} ausente restanteMs={3000} />);
+    expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
+  });
+  it('AC-4.7 (v5.0.0): com o saiba mais aberto o cronômetro corre, então o card pulsa nos últimos 5 s', () => {
+    const { container } = render(<TelaCard {...props} saibaMais restanteMs={3000} />);
+    expect(container.querySelector('article')!.className).toMatch(/pulsando/);
+    expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+  });
+  ```
+- [ ] Em `tests/e2e/barra-tempo.spec.ts`, substituir o teste `AC-4.7 … com "saiba mais" aberto, não` por:
+  ```ts
+  test('AC-3.1/AC-4.7 (v5.0.0): com o "saiba mais" aberto a barra continua diminuindo, ele não fecha sozinho e o card pulsa nos últimos 5 s', async ({ page }) => {
+    test.setTimeout(30_000);
+    const card = page.locator('article');
+    const barra = page.getByRole('timer', { name: 'Tempo restante' });
+    const largura = () => barra.locator(':scope > div').evaluate((el) => el.getBoundingClientRect().width);
+    await page.keyboard.press('ArrowUp');
+    await expect(card.getByText('Texto expandido de teste.', { exact: false })).toBeVisible();
+    const antes = await largura();
+    await page.waitForTimeout(2000);
+    expect(await largura()).toBeLessThan(antes);                       // não trava
+    await page.waitForTimeout(4500);                                    // passa dos 5 s do antigo fechamento automático
+    await expect(card.getByText('Texto expandido de teste.', { exact: false })).toBeVisible();
+    await expect(barra).toHaveText(/^[0-9] s$/, { timeout: 10_000 });   // chegou nos últimos segundos
+    await expect(page.locator('article')).toHaveClass(/pulsando/);
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/partida.test.ts src/app/Telas.test.tsx` e `npm run fixture && npx vite build && npx playwright test tests/e2e/barra-tempo.spec.ts`. Esperado: FAIL nos testes novos (o tempo ainda pausa).
+- [ ] Em `src/core/partida.ts`:
+  - Apagar `saibaMaisOciosoMs: 5000,` de `TEMPOS` e `saibaMaisOciosoMs: number;` de `EstadoCard`.
+  - Em `card()`, trocar o retorno por `{ tela: 'card', partida, indice, restanteMs: tempoCardMs, saibaMais: false, ausenteMs: null }`.
+  - Trocar a linha do evento por `if (evento.tipo === 'saibaMais') return { ...estado, saibaMais: !estado.saibaMais };`.
+  - Apagar o bloco `if (base.saibaMais) { … }` inteiro. As duas últimas linhas do ramo passam a valer sempre (o "saiba mais" aberto não impede de descontar o tempo):
+    ```ts
+    const base: EstadoCard = { ...estado, ausenteMs: null };
+    const restanteMs = base.restanteMs - evento.dtMs;
+    return restanteMs <= 0 ? registrar(base, 'tempo', null) : { ...base, restanteMs };
+    ```
+- [ ] Em `src/app/Telas.tsx`, trocar a linha do pulso por:
+  ```tsx
+  const pulsando = alerta && !ausente; // AC-4.7: só "Volte para o centro" pausa o cronômetro (v5.0.0)
+  ```
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 25 mantidos, com o teste de AC-4.7 reescrito). Se `tsc` apontar algum outro uso de `saibaMaisOciosoMs`, remover o uso e informar.
+- [ ] Commit: `fix(partida): timer keeps running with saiba mais open, no auto-close (Phase 16: Tempo corre no saiba mais)`
+
+---
+
+## Phase 17 (added v5.0.0): Verificação do "saiba mais" no hardware
+
+**Implements:** FR-1 | **Satisfies:** AC-3.1, AC-3.2 (hardware)
+
+- [ ] Com a câmera real, abrir o "saiba mais" pelo gesto de cada modo: a barra continua diminuindo e o texto continua na tela até repetir o gesto, escolher ou o tempo acabar.
+- [ ] Conferir se o tempo configurado (15 s) basta para ler o "saiba mais" e decidir; se não, aumentar o tempo por card nas Configurações (até 30 s).
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -4108,7 +4202,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-1 | 3, 5, 12 (reescrito v3.0.0), 13 |
   | FR-2 | 4, 5 |
   | FR-3 | 5 |
-  | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15 |
+  | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15, 16 |
   | FR-5 | 3 |
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
@@ -4135,3 +4229,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 4.0.0 | 5, 8.2, 10 | Parcialmente invalidadas: inclinação do card (laço em App.tsx) e o cronômetro sobre o card; reescritos na Fase 14 |
 | 4.0.0 | 14 | Adicionada: card parado, barra de tempo e pulso vermelho |
 | 4.0.0 | 15 | Adicionada: verificação no hardware |
+| 5.0.0 | 3, 14 | Parcialmente invalidadas: pausa do cronômetro e fechamento automático do saiba mais; reescritos na Fase 16 |
+| 5.0.0 | 16 | Adicionada: tempo corre com o saiba mais aberto |
+| 5.0.0 | 17 | Adicionada: verificação no hardware |

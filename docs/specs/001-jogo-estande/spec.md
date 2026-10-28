@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 4.0.0
+**Version:** 5.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -18,6 +18,7 @@
 | 2.0.0 | 2026-10-27 | Reescritos Story 9 e FR-9: o menu "Modo de jogo" vira "Configurações" (modo, tempo por card de 10 a 30 s, som); o tempo por card deixa de ser fixo em 15 s (FR-1, AC-1.2, AC-4.4). Adicionados Story 10/FR-10 (botões Iniciar e Sair), Story 11/FR-11 (sons) e AC-4.5 (card centralizado na vertical) |
 | 3.0.0 | 2026-10-27 | Início só manual: a câmera deixa de iniciar a partida sozinha (reescritos AC-1.1, AC-1.6, AC-10.1, FR-1 e a linha "Iluminação ruim" dos erros; ajustados AC-1.4 e AC-10.3; acrescentados AC-1.7 e AC-1.8). Causa: depois de uma partida, de Sair ou de a pessoa sair do quadro, o jogo recomeçava sozinho se alguém continuasse no quadro |
 | 4.0.0 | 2026-10-27 | Card parado até a escolha: reescritos AC-2.3 e AC-9.13 (o card não inclina mais com o corpo ou a cabeça, porque tremia com a captura da câmera; rastreio e gestos não mudam). Cronômetro reescrito em FR-4: sai o número em cima do card, entra uma barra grande na base da tela, com os segundos (AC-4.6), e nos últimos 5 s o card pulsa em vermelho (AC-4.7). AC-4.5 passa a medir a área de jogo sem a barra |
+| 5.0.0 | 2026-10-28 | O tempo do card não pausa mais com o "saiba mais" aberto: reescritos AC-3.1, AC-3.2, AC-4.7 e FR-1; removido AC-3.5 (o "saiba mais" não fecha mais sozinho). Só "Volte para o centro" pausa o cronômetro. Causa: a barra de tempo e sua animação ficavam paradas com o "saiba mais" aberto, porque a regra pausava o cronômetro |
 
 ---
 
@@ -95,11 +96,12 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 **Acceptance criteria:**
 
-- [ ] **AC-3.1** Given um card está na tela When o jogador mantém os dois punhos acima da cabeça (acima do nariz) por ~500 ms Then o texto "saiba mais" do card é exibido e o cronômetro pausa.
-- [ ] **AC-3.2** Given o "saiba mais" está aberto When o jogador repete o gesto de duas mãos para cima (ou o operador pressiona ↑) Then o "saiba mais" fecha e o cronômetro retoma do ponto em que parou.
+- [ ] **AC-3.1** Given um card está na tela When o jogador mantém os dois punhos acima da cabeça (acima do nariz) por ~500 ms Then o texto "saiba mais" do card é exibido e o cronômetro continua correndo, com a barra de tempo diminuindo normalmente (AC-4.6, AC-4.7).
+- [ ] **AC-3.2** Given o "saiba mais" está aberto When o jogador repete o gesto de duas mãos para cima (ou o operador pressiona ↑) Then o "saiba mais" fecha e o cronômetro segue do ponto em que está, sem ter parado.
 - [ ] **AC-3.3** Given o "saiba mais" está aberto When o jogador faz o gesto de match ou de descarte Then o "saiba mais" fecha e a escolha é registrada normalmente.
 - [ ] **AC-3.4** Given um card está na tela When o operador pressiona ↑ Then o resultado é o mesmo de AC-3.1.
-- [ ] **AC-3.5** Given o "saiba mais" está aberto When se passam 5 s sem gesto nem tecla Then o "saiba mais" fecha sozinho e o cronômetro retoma.
+
+> AC-3.5 (o "saiba mais" fechar sozinho após 5 s) foi removido na v5.0.0 e o número não é reutilizado. O "saiba mais" só fecha por AC-3.2, AC-3.3 ou quando o tempo esgota (AC-4.3).
 
 ### Story 4: Aprender com cada resposta
 
@@ -115,7 +117,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-4.4** Given o feedback de um card terminou When ainda há cards na partida Then o próximo card aparece com o cronômetro no tempo por card configurado.
 - [ ] **AC-4.5** Given um card está na tela (parado ou saindo) When a tela tem 1366×768 ou 1920×1080 Then o card fica centralizado na vertical: o centro do card fica a no máximo 8 px do centro da área de jogo, que é a tela menos a barra de tempo (AC-4.6), sem cortar texto (FR-4) e sem ficar atrás da barra.
 - [ ] **AC-4.6** Given um card está na tela When o tempo passa Then uma barra de tempo grossa, com a largura da tela e colada na base, diminui da direita para a esquerda na proporção do tempo restante e mostra dentro dela os segundos restantes (por exemplo, "12 s"); não há mais número de tempo em cima do card.
-- [ ] **AC-4.7** Given um card está na tela com o cronômetro correndo When faltam 5 s ou menos Then a barra fica vermelha e o card ganha borda e brilho vermelhos que pulsam cerca de 1 vez por segundo, crescendo levemente; com o cronômetro pausado ("saiba mais" aberto ou "Volte para o centro") o card não pulsa.
+- [ ] **AC-4.7** Given um card está na tela com o cronômetro correndo (inclusive com o "saiba mais" aberto) When faltam 5 s ou menos Then a barra fica vermelha e o card ganha borda e brilho vermelhos que pulsam cerca de 1 vez por segundo, crescendo levemente; com o cronômetro pausado ("Volte para o centro") o card não pulsa.
 
 ### Story 5: Ver o resumo e liberar o estande
 
@@ -233,10 +235,11 @@ O jogo passa por estes estados: espera → calibração → card → (saiba mais
 
 **Must:**
 - Começar a partida só por ação do operador: Enter ou "▶ Iniciar" na espera (AC-1.6, AC-1.7), ou Enter na calibração (AC-1.8). Com a câmera ativa, a partida só começa depois de 2 s contínuos de calibração, a menos que o operador pule a calibração.
-- Ter o tempo por card configurado (padrão 15 s, FR-9), 3 s de feedback, 5 s de inatividade para fechar o "saiba mais" e 10 s de tolerância sem pessoa no quadro.
+- Ter o tempo por card configurado (padrão 15 s, FR-9), 3 s de feedback, e 10 s de tolerância sem pessoa no quadro.
 - Encerrar a partida a qualquer momento pelo botão "✕ Sair" ou por Esc (FR-10).
 - Manter o resumo na tela até o operador iniciar uma nova partida (Enter).
-- Pausar o cronômetro do card durante o "saiba mais" e durante "Volte para o centro".
+- Pausar o cronômetro do card só durante "Volte para o centro"; com o "saiba mais" aberto o cronômetro continua correndo.
+- Manter o "saiba mais" aberto até o jogador fechá-lo (gesto ou ↑), fazer uma escolha ou o tempo esgotar; ele não fecha sozinho.
 
 **Must not:**
 - Iniciar a calibração ou a partida por causa da câmera: a presença de uma pessoa no quadro nunca tira o jogo da tela de espera.
@@ -404,7 +407,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ## Open Questions
 
 Nenhuma pendente. Decisões que o PRD não fixava, confirmadas pela responsável pelo projeto em 2026-10-26:
-- O "saiba mais" fecha sozinho após 5 s sem gesto nem tecla (AC-3.5).
+- (Substituída na v5.0.0) O "saiba mais" fechava sozinho após 5 s sem gesto nem tecla; deixou de existir.
 - O resumo fica na tela até o operador iniciar uma nova partida com Enter (AC-5.2, AC-5.6).
 - A partida pode começar por Enter, sem câmera (AC-1.6).
 - A tela de referência é 1366×768 (FR-4).
@@ -434,6 +437,11 @@ Decisões da v4.0.0, confirmadas pela responsável pelo projeto em 2026-10-27:
 - O card fica parado até a escolha: não inclina com o corpo nem com a cabeça. O rastreio da câmera e os gestos não mudam.
 - O cronômetro vira uma barra grossa na base da tela, com os segundos dentro; o número em cima do card sai.
 - Nos últimos 5 s: barra vermelha e card com borda e brilho vermelhos pulsando (~1 vez/s, crescendo levemente); pausado, não pulsa.
+
+Decisões da v5.0.0, confirmadas pela responsável pelo projeto em 2026-10-28:
+- O tempo do card continua correndo com o "saiba mais" aberto: ler mais informação custa tempo.
+- O "saiba mais" não fecha mais sozinho: fecha por gesto, ↑, escolha ou tempo esgotado.
+- Só "Volte para o centro" pausa o cronômetro.
 
 ## Out of Scope (Future Considerations)
 
