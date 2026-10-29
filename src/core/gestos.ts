@@ -160,17 +160,21 @@ function criarArraste(cfg: Config) {
   return {
     zerar() { centro.d = null; centro.e = null; },
     ler(m: MedidaMaos, tMs: number): Lado | null {
-      let saida: Lado | null = null;
-      for (const [k, desloc] of [['d', m.deslocD], ['e', m.deslocE]] as const) {
+      const lados: Lado[] = [];
+      for (const [k, desloc, alta] of [['d', m.deslocD, m.direita], ['e', m.deslocE, m.esquerda]] as const) {
+        // Mão levantada não arrasta: a regra de levantar a mão (AC-9.7) ou o "saiba mais" (AC-9.8) decide.
+        if (alta) { centro[k] = null; continue; }
         if (Math.abs(desloc) < cfg.centroArrasteL) { centro[k] = { t: tMs, desloc }; continue; }
         const c = centro[k];
         const andou = desloc - (c?.desloc ?? 0);
         if (c && tMs - c.t <= cfg.arrasteMaxMs && Math.abs(andou) >= cfg.arrasteMinL && Math.sign(andou) === Math.sign(desloc)) {
-          saida = desloc > 0 ? 'direita' : 'esquerda';
+          lados.push(desloc > 0 ? 'direita' : 'esquerda');
           centro[k] = null; // um novo arraste precisa voltar ao centro (AC-9.22)
         }
       }
-      return saida;
+      // As duas mãos saindo do centro para lados opostos no mesmo quadro é ambíguo: não escolhe.
+      if (lados.length === 2 && lados[0] !== lados[1]) return null;
+      return lados[0] ?? null;
     },
   };
 }

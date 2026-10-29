@@ -77,4 +77,21 @@ describe('modo Mão v6.0.0: liberação entre escolhas (AC-9.22) e gestos antigo
     const j = criarInterpretador('mao');
     expect(seq(j, [[pose({ dAlto: true, eAlto: true }), 0], [pose({ dAlto: true, eAlto: true }), 500]])).toEqual(['maosParaCima']);
   });
+  it('AC-9.8 + AC-9.20: levantar as duas mãos do peito em V abre só o "saiba mais", sem escolha', () => {
+    const i = criarInterpretador('mao');
+    expect(seq(i, [
+      [pose({ d: 0.1, e: -0.1 }), 0],
+      [pose({ d: 1.1, e: -1.1, dAlto: true, eAlto: true }), 300],
+      [pose({ d: 1.1, e: -1.1, dAlto: true, eAlto: true }), 900],
+    ])).toEqual(['maosParaCima']);
+  });
+  it('arraste com a mão levantada não escolhe pelo arraste (a regra de levantar a mão decide)', () => {
+    const i = criarInterpretador('mao');
+    expect(seq(i, [[pose({ d: 0.1 }), 0], [pose({ d: 1.2, dAlto: true }), 300]])).toEqual([]);
+    expect(seq(i, [[pose({ d: 1.2, dAlto: true }), 600]])).toEqual(['direita']);
+  });
+  it('as duas mãos baixas saindo do centro para lados opostos no mesmo quadro não escolhem', () => {
+    const i = criarInterpretador('mao');
+    expect(seq(i, [[pose({ d: 0.1, e: -0.1 }), 0], [pose({ d: 1.1, e: -1.1 }), 300]])).toEqual([]);
+  });
 });

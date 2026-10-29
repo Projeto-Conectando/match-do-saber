@@ -5001,6 +5001,7 @@ Decisões técnicas (inline):
   - anotar quantas escolhas certas, quantas falsas e quantas não registradas;
   - baixar o registro depois de cada série.
 - [ ] Conferir que a barra de tempo corre o card inteiro mesmo quando a câmera perde a pessoa, nos modos Mão e Cabeça (AC-9.21).
+- [ ] Levantar as duas mãos do peito para cima em "V": deve abrir só o "saiba mais", sem registrar escolha (AC-9.8; revisão v6.0.0).
 - [ ] Se necessário, ajustar `duasMaosLadoL`, `centroArrasteL`, `arrasteMinL` e `arrasteMaxMs` com base nos valores "mãos (L)" do registro.
 
 ---
