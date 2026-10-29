@@ -59,7 +59,7 @@ describe('configurações do estande', () => {
     expect(resumoConfiguracoes({ modo: 'mao', tempoCardS: 20, som: false })).toBe('Modo: Mão · Tempo por card: 20 s · Som: desligado');
   });
   it('AC-9.14: dicas de cada modo continuam iguais', () => {
-    expect(DICA_GESTOS.mao).toBe('Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais');
+    expect(DICA_GESTOS.mao).toBe('É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais');
     expect(DICA_GESTOS.cabeca).toBe('Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais');
   });
 });

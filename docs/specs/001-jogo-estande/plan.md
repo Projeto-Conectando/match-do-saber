@@ -5007,6 +5007,34 @@ Decisões técnicas (inline):
 
 ---
 
+## Phase 22 (added v6.1.0): Dica de gestos do modo Mão
+
+**Implements:** FR-9 | **Satisfies:** AC-9.14 (texto do modo Mão), FR-4 (dica não cobre o card), AC-12.3 (painel não cobre a dica)
+**Files:** `src/core/modos.ts`, `src/core/modos.test.ts`, `src/app/Telas.test.tsx`, `tests/e2e/configuracoes.spec.ts`, `tests/e2e/diagnostico.spec.ts`
+**Interfaces:** Consumes: `DICA_GESTOS` (Fase 8). Produces: `DICA_GESTOS.mao` com o texto novo; nenhuma assinatura muda.
+
+Troca só o texto da dica do modo Mão. Ele aparece na calibração, na pílula `.dicaModo` ao lado do card e no menu Configurações. A dica do Mão passa a ser a mais longa, então o E2E do diagnóstico, que mede a dica mais longa contra o painel, passa a usar o modo Mão.
+
+- [ ] Nos testes, trocar o texto antigo `"Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais"` pelo novo `"É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais"`:
+  - `src/core/modos.test.ts` (asserção AC-9.14 de `DICA_GESTOS.mao`);
+  - `src/app/Telas.test.tsx` (linha `mao` do `it.each` AC-9.14);
+  - `tests/e2e/configuracoes.spec.ts` (`const DICA_MAO`).
+- [ ] Em `tests/e2e/diagnostico.spec.ts`, trocar `DICA_CABECA` por `DICA_MAO` com o texto novo; tirar um dos dois `ArrowRight` do menu (modo → Mão), com o comentário `// modo → Mão (dica mais longa)`; trocar a linha injetada `2: 'pessoas: 1 · modo: Cabeça · tela: calibracao'` por `'pessoas: 1 · modo: Mão · tela: calibracao'`.
+- [ ] Rodar `npx vitest run src/core/modos.test.ts src/app/Telas.test.tsx`. Esperado: FAIL (o código ainda tem o texto antigo).
+- [ ] Em `src/core/modos.ts`, trocar `DICA_GESTOS.mao` pelo texto novo.
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS, incluindo a checagem de sobreposição da dica com o card (`configuracoes.spec.ts`) e do painel com a dica (`diagnostico.spec.ts`). Se a pílula cobrir o card ou o painel, ajustar só o CSS de `.dicaModo` em `src/app/App.module.css` (por exemplo `font-size` ou `bottom`), nunca o texto.
+- [ ] Commit: `feat(modos): Mão hint lists the three ways to choose (Phase 22: Dica de gestos do modo Mão)`
+
+---
+
+## Phase 23 (added v6.1.0): Verificação da dica no hardware
+
+**Implements:** FR-9 | **Satisfies:** AC-9.14 (leitura a 1,5–2 m)
+
+- [ ] No notebook do estande, no modo Mão, conferir a 1,5–2 m que a dica ao lado do card é legível e não cobre o card nem a barra de tempo; repetir com `?diagnostico`.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5065,3 +5093,5 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 6.0.0 | 8.2, 3 | Parcialmente invalidadas: o modo Mão ganha gestos e a ausência deixa de pausar nos modos Mão/Cabeça; reescritos na Fase 20 |
 | 6.0.0 | 20 | Adicionada: gestos novos do modo Mão e ausência só no modo Corpo |
 | 6.0.0 | 21 | Adicionada: verificação no hardware |
+| 6.1.0 | 22 | Adicionada: dica de gestos do modo Mão cita os três jeitos de escolher |
+| 6.1.0 | 23 | Adicionada: verificação da dica no hardware |

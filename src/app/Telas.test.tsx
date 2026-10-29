@@ -75,7 +75,7 @@ describe('telas', () => {
 
 describe('modos de jogo (v1.1.0)', () => {
   it.each([
-    ['mao', 'Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais'],
+    ['mao', 'É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais'],
     ['cabeca', 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais'],
   ] as const)('AC-9.14: calibração e card mostram os gestos do modo %s', (modo, dica) => {
     const { unmount } = render(<TelaCalibracao progresso={0} modo={modo} />);
