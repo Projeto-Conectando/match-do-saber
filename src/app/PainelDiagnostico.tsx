@@ -26,6 +26,7 @@ export function PainelDiagnostico({ registro, onBaixar }: { registro: Registro; 
       <p>{`pessoas: ${a?.pessoas ?? 0} · modo: ${a ? MODO_ROTULO[a.modo] : '—'} · tela: ${a?.tela ?? '—'}`}</p>
       <p>{linhaPunho('punho D', a?.pontos.punhoD, a?.medidas.maos?.direita)}</p>
       <p>{linhaPunho('punho E', a?.pontos.punhoE, a?.medidas.maos?.esquerda)}</p>
+      <p>{a?.medidas.maos ? `mãos (L): D ${a.medidas.maos.deslocD.toFixed(2)} · E ${a.medidas.maos.deslocE.toFixed(2)}` : 'mãos (L): —'}</p>
       <p>{od && oe ? `ombros: y=${n2(od.y)} / ${n2(oe.y)} conf ${n2(od.conf)} / ${n2(oe.conf)}` : 'ombros: —'}</p>
       <p>{cab ? `cabeça: ${cab.rollGraus.toFixed(1)}° · queixo ${n2(cab.queixo)}` : 'cabeça: —'}</p>
       <p>{`gestos (5 s): ${r.gestosRecentes.join(', ') || '—'}`}</p>

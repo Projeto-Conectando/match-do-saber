@@ -11,7 +11,7 @@ describe('PainelDiagnostico', () => {
     r.adicionar({
       t: agora, dtMs: 140, deteccaoMs: 138, pessoas: 1, tela: 'card', modo: 'mao',
       pontos: { punhoD: { x: 0.3, y: 0.31, conf: 0.92 }, punhoE: { x: 0.7, y: 0.71, conf: 0.4 }, ombroD: { x: 0.4, y: 0.45, conf: 0.99 }, ombroE: { x: 0.6, y: 0.46, conf: 0.98 } },
-      medidas: { maos: { direita: true, esquerda: false }, cabeca: { rollGraus: 3.2, queixo: -0.28 } },
+      medidas: { maos: { direita: true, esquerda: false, deslocD: 0.62, deslocE: -0.58 }, cabeca: { rollGraus: 3.2, queixo: -0.28 } },
       gestos: ['direita'],
     });
     render(<PainelDiagnostico registro={r} onBaixar={() => {}} />);
@@ -21,6 +21,7 @@ describe('PainelDiagnostico', () => {
     expect(painel).toHaveTextContent('pessoas: 1 · modo: Mão · tela: card');
     expect(painel).toHaveTextContent('punho D: y=0.31 conf 0.92 · acima do ombro');
     expect(painel).toHaveTextContent('punho E: y=0.71 conf 0.40');
+    expect(painel).toHaveTextContent('mãos (L): D 0.62 · E -0.58');
     expect(painel).toHaveTextContent('ombros: y=0.45 / 0.46');
     // AC-12.3 pede também a confiança dos ombros.
     expect(painel).toHaveTextContent('ombros: y=0.45 / 0.46 conf 0.99 / 0.98');

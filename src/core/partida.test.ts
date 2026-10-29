@@ -229,3 +229,21 @@ describe('v2.0.0: tempo por card e sair', () => {
     expect(reduzir(ESTADO_INICIAL, { tipo: 'sair' }, ctx())).toBe(ESTADO_INICIAL);
   });
 });
+
+describe('v6.0.0: ausência só pausa no modo Corpo', () => {
+  it('AC-9.21: com ignorarAusencia (Mão/Cabeça), partida calibrada não pausa nem encerra sem ninguém', () => {
+    const c = ctx({ ignorarAusencia: true });
+    const s0 = emCardCalibrado(c);
+    expect(s0.tela).toBe('card');
+    const s = rodar(s0, [tick(6000, ninguem), tick(6000, ninguem)], c);
+    expect(s).toMatchObject({ tela: 'card', ausenteMs: null, restanteMs: TEMPOS.cardMs - 12000 });
+  });
+  it('AC-5.3 (modo Corpo): sem ignorarAusencia, a partida calibrada ainda pausa', () => {
+    const s = rodar(emCardCalibrado(), [tick(4000, ninguem)]);
+    expect(s).toMatchObject({ tela: 'card', ausenteMs: 4000, restanteMs: TEMPOS.cardMs });
+  });
+  it('a calibração continua exigindo a pessoa no centro, mesmo com ignorarAusencia', () => {
+    const c = ctx({ ignorarAusencia: true });
+    expect(rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(5000, ninguem), tick(5000, ninguem)], c).tela).toBe('espera');
+  });
+});
