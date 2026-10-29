@@ -16,11 +16,17 @@ function base(): Pose {
 describe('medidas compartilhadas', () => {
   it('medirMaos: punho acima do ombro menos a margem', () => {
     const p = base();
-    expect(medirMaos(p)).toEqual({ direita: false, esquerda: false });
+    expect(medirMaos(p)).toMatchObject({ direita: false, esquerda: false });
     p[16] = { ...p[16]!, y: 0.45 - CONFIG_GESTOS.margemMaoOmbro - 0.01 };
-    expect(medirMaos(p)).toEqual({ direita: true, esquerda: false });
+    expect(medirMaos(p)).toMatchObject({ direita: true, esquerda: false });
     p[15] = { ...p[15]!, y: 0.45 - CONFIG_GESTOS.margemMaoOmbro + 0.01 };   // dentro da margem: não conta
     expect(medirMaos(p).esquerda).toBe(false);
+  });
+  it('v6.0.0: deslocamento lateral dos punhos em larguras de ombro, do ponto de vista do jogador', () => {
+    const p = base();                       // ombros em x 0,6 (E) e 0,4 (D): L = 0,2, centro do jogador 0,5
+    const m = medirMaos(p);
+    expect(m.deslocD).toBeCloseTo(0.75, 5); // punho D cru em x 0,35 → x do jogador 0,65 → +0,15/0,2
+    expect(m.deslocE).toBeCloseTo(-0.75, 5);
   });
   it('medirCabeca: inclinação em graus pelas orelhas e queixo pelo nariz', () => {
     const p = base();
