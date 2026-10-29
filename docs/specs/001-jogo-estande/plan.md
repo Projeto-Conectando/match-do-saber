@@ -5035,6 +5035,154 @@ Troca só o texto da dica do modo Mão. Ele aparece na calibração, na pílula 
 
 ---
 
+## Phase 24 (added v7.0.0): Foto polaroid no resumo
+
+**Implements:** FR-13, FR-9 (item "Foto no resumo"), FR-2 (Must not reescrito) | **Satisfies:** AC-13.1–AC-13.5, AC-9.1, AC-9.2, AC-9.4, AC-9.5 (quatro itens)
+**Files:** `src/core/modos.ts`, `src/core/modos.test.ts`, `src/core/foto.ts`, `src/core/foto.test.ts`, `src/app/foto.ts`, `src/app/foto.test.ts`, `src/app/useFotoPartida.ts`, `src/app/useFotoPartida.test.tsx`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.tsx`, `src/app/App.module.css`, `tests/e2e/configuracoes.spec.ts`, `tests/e2e/partida-v2.spec.ts`, `tests/e2e/diagnostico.spec.ts`, `tests/e2e/foto.spec.ts`
+**Interfaces:** Consumes: `Configuracoes`, `ITENS_CONFIG`, `OPCOES`, `rotuloValor`, `resumoConfiguracoes` (Fase 10); `Estado` (Fase 3); `videoRef`, `camera` de `useJogo` (Fase 5); `TelaResumo` (Fase 5). Produces: `Configuracoes.foto: boolean`; `indiceFoto(total: number): number` (`src/core/foto.ts`); `capturarQuadro(video: HTMLVideoElement, largura?: number): string | null` (`src/app/foto.ts`); `useFotoPartida(estado: Estado, ligada: boolean, capturar: () => string | null): string | null` (`src/app/useFotoPartida.ts`); `TelaResumo` com a prop opcional `foto?: string | null`.
+
+A foto é um data URL (`image/jpeg`) guardado só em estado React. Ela é apagada ao voltar para a espera ou a calibração e ao começar o card 0 de uma nova partida; nunca vai para `localStorage`, para a rede nem para o registro do diagnóstico.
+
+### 24.1 Item "Foto no resumo" nas Configurações
+
+- [ ] Testes primeiro, em `src/core/modos.test.ts`:
+  - `ITENS_CONFIG` passa a ser `['modo', 'tempoCardS', 'som', 'foto']`.
+  - AC-9.4: `CONFIG_PADRAO` é `{ modo: 'corpo', tempoCardS: 15, som: true, foto: true }`.
+  - AC-9.5: salvar e ler `{ modo: 'cabeca', tempoCardS: 25, som: false, foto: false }` devolve o mesmo objeto; a chave é `match-do-saber:foto` com `'ligada'`/`'desligada'`; valor inválido (`'talvez'`) cai no padrão `true`.
+  - `mudarValor(CONFIG_PADRAO, 'foto', 1).foto` é `false`.
+  - AC-9.2: `rotuloValor('foto', true)` é `'Ligada'`, `rotuloValor('foto', false)` é `'Desligada'`; `rotuloValor('som', true)` continua `'Ligado'`; `resumoConfiguracoes({ modo: 'mao', tempoCardS: 20, som: false, foto: false })` é `'Modo: Mão · Tempo por card: 20 s · Som: desligado · Foto: desligada'`.
+  - Atualizar todos os literais de `Configuracoes` nos testes (o `tsc` aponta os que faltarem) com `foto: true` ou `foto: false`.
+- [ ] Em `src/app/Telas.test.tsx`: o teste do menu passa a se chamar "AC-9.1: menu mostra os quatro itens…", espera também `group` "Foto no resumo" e o botão `'◉ Ligada'` com `aria-pressed="true"`; o `definir` esperado inclui `foto: true`; o resumo da espera passa a ser `'Modo: Mão · Tempo por card: 20 s · Som: desligado · Foto: desligada'` (com `foto: false` no `config`).
+- [ ] Rodar `npx vitest run src/core/modos.test.ts src/app/Telas.test.tsx`. Esperado: FAIL.
+- [ ] Em `src/core/modos.ts`:
+  ```ts
+  export interface Configuracoes { modo: ModoJogo; tempoCardS: number; som: boolean; foto: boolean }
+  export const CONFIG_PADRAO: Configuracoes = { modo: MODO_PADRAO, tempoCardS: 15, som: true, foto: true };
+  export const ITENS_CONFIG: readonly ItemConfig[] = ['modo', 'tempoCardS', 'som', 'foto'];
+  export const ROTULO_ITEM: Record<ItemConfig, string> = { modo: 'Modo de jogo', tempoCardS: 'Tempo por card', som: 'Som', foto: 'Foto no resumo' };
+  // OPCOES: foto: [true, false]
+  // CHAVES: foto: 'match-do-saber:foto'
+  // lerConfiguracoes: foto: f === 'ligada' ? true : f === 'desligada' ? false : CONFIG_PADRAO.foto
+  // salvarConfiguracoes: a?.setItem(CHAVES.foto, c.foto ? 'ligada' : 'desligada');
+  // rotuloValor: if (item === 'foto') return valor ? 'Ligada' : 'Desligada';
+  // resumoConfiguracoes: … · Som: … · Foto: ${c.foto ? 'ligada' : 'desligada'}
+  ```
+- [ ] Nos E2E, acrescentar `' · Foto: ligada'` a cada resumo da espera em `tests/e2e/configuracoes.spec.ts` (4 linhas) e em `tests/e2e/partida-v2.spec.ts` (1 linha).
+- [ ] Rodar `npx vitest run` e `npx tsc --noEmit`. Esperado: PASS.
+- [ ] Commit: `feat(modos): add "Foto no resumo" setting (Phase 24.1: Item Foto no resumo)`
+
+### 24.2 Captura no meio da partida e polaroid no resumo
+
+- [ ] Escrever `src/core/foto.test.ts`: `indiceFoto(10)` é 4 (5º card), `indiceFoto(9)` é 4, `indiceFoto(6)` é 2, `indiceFoto(1)` é 0 (AC-13.1: card ⌈M/2⌉, base 0).
+- [ ] Escrever `src/app/foto.test.ts` (`// @vitest-environment jsdom`):
+  - vídeo sem dimensões (`videoWidth` 0) devolve `null`;
+  - com `videoWidth` 1280 e `videoHeight` 720 e `HTMLCanvasElement.prototype.getContext` / `toDataURL` simulados por `vi.spyOn`: devolve o data URL simulado, o canvas tem 480×270, o contexto recebe `translate(480, 0)` e `scale(-1, 1)` antes de `drawImage` (espelhada, AC-13.2);
+  - `drawImage` que lança erro devolve `null` (AC-13.3).
+- [ ] Escrever `src/app/useFotoPartida.test.tsx` (`// @vitest-environment jsdom`, `renderHook` + `rerender` com estados montados à mão, partida de 10 cards e `capturar = vi.fn(() => 'data:image/jpeg;base64,AAA')`):
+  - AC-13.1: `capturar` é chamado uma vez quando o estado vira `feedback` com `indice` 4; não é chamado nos feedbacks 0–3 nem 5–9; a foto persiste até o `resumo`.
+  - AC-13.3: com `ligada = false`, `capturar` nunca é chamado e a foto é `null`; com `capturar` devolvendo `null`, a foto é `null`.
+  - AC-13.4: depois do resumo com foto, `espera` (Sair/Esc ou ausência), `calibracao` (Enter com câmera) e `card` com `indice` 0 (Enter sem câmera) zeram a foto.
+- [ ] Em `src/app/Telas.test.tsx`, acrescentar:
+  - AC-13.2: `render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto="data:image/jpeg;base64,AAA" />)` mostra `img` com `alt` "Sua foto na partida" e `src` igual ao data URL, e o texto `'Match do Saber · 7 de 10'`; `'7 de 10'` e "Checar a fonte" continuam na tela.
+  - AC-13.3: sem `foto` (e com `foto={null}`), não há `figure` nem `img` no resumo.
+- [ ] Rodar `npx vitest run src/core/foto.test.ts src/app`. Esperado: FAIL.
+- [ ] Implementar `src/core/foto.ts`:
+  ```ts
+  /** Card do meio da partida (⌈M/2⌉, base 0): a foto do resumo é tirada na escolha dele (AC-13.1). */
+  export function indiceFoto(total: number): number {
+    return Math.ceil(total / 2) - 1;
+  }
+  ```
+- [ ] Implementar `src/app/foto.ts`:
+  ```ts
+  /** Um quadro da câmera, espelhado como a prévia (AC-13.2). Fica só na memória (FR-13). */
+  export function capturarQuadro(video: HTMLVideoElement, largura = 480): string | null {
+    try {
+      const { videoWidth: w, videoHeight: h } = video;
+      if (!w || !h) return null;
+      const c = document.createElement('canvas');
+      c.width = largura;
+      c.height = Math.round((largura * h) / w);
+      const g = c.getContext('2d');
+      if (!g) return null;
+      g.translate(c.width, 0);
+      g.scale(-1, 1);
+      g.drawImage(video, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.85);
+    } catch {
+      return null;
+    }
+  }
+  ```
+- [ ] Implementar `src/app/useFotoPartida.ts`:
+  ```ts
+  import { useEffect, useRef, useState } from 'react';
+  import { indiceFoto } from '../core/foto';
+  import type { Estado } from '../core/partida';
+
+  export function useFotoPartida(estado: Estado, ligada: boolean, capturar: () => string | null): string | null {
+    const [foto, setFoto] = useState<string | null>(null);
+    const capturarRef = useRef(capturar);
+    capturarRef.current = capturar;
+    const indice = 'indice' in estado ? estado.indice : -1;
+    useEffect(() => {
+      if (estado.tela === 'espera' || estado.tela === 'calibracao' || (estado.tela === 'card' && estado.indice === 0)) setFoto(null);
+      else if (estado.tela === 'feedback' && ligada && estado.indice === indiceFoto(estado.partida.cards.length)) setFoto(capturarRef.current());
+    }, [estado.tela, indice]); // eslint-disable-line react-hooks/exhaustive-deps -- reage só à troca de tela/card
+    return foto;
+  }
+  ```
+- [ ] Em `src/app/Telas.tsx`, `TelaResumo` ganha `foto?: string | null`. Sem foto, renderiza exatamente como hoje. Com foto:
+  ```tsx
+  <main className={s.centro}>
+    <div className={s.resumoFoto}>
+      <figure className={s.polaroid}>
+        <img src={foto} alt="Sua foto na partida" />
+        <figcaption>{`Match do Saber · ${pontos} de ${total}`}</figcaption>
+      </figure>
+      <div className={s.resumoTexto}>{/* h1, placar, h2 e lista de técnicas de hoje */}</div>
+    </div>
+    <p className={s.dica}>Operador: Enter para a próxima partida</p>
+  </main>
+  ```
+- [ ] Em `src/app/App.module.css`:
+  ```css
+  .resumoFoto { display: flex; align-items: center; justify-content: center; gap: 3rem; max-width: 100%; }
+  .resumoTexto { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .polaroid { margin: 0; width: min(20rem, 28vw); background: #fff; color: #1b1035; padding: 0.9rem 0.9rem 0; border-radius: 0.25rem; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.45); transform: rotate(-3deg); }
+  .polaroid img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+  .polaroid figcaption { padding: 0.9rem 0 1.2rem; font-size: 1.25rem; font-weight: 700; text-align: center; }
+  ```
+- [ ] Em `src/app/App.tsx`, no `Jogo`:
+  ```tsx
+  const foto = useFotoPartida(estado, cfg.config.foto, () =>
+    camera === 'ativa' && videoRef.current ? capturarQuadro(videoRef.current) : null);
+  // …
+  case 'resumo':
+    tela = <TelaResumo … foto={foto} />;
+  ```
+- [ ] Escrever `tests/e2e/foto.spec.ts`:
+  - AC-13.3 (sem câmera): partida inteira pelas setas; o resumo não tem `figure` nem `img`.
+  - AC-13.1/AC-13.2/AC-13.4/AC-13.5 (câmera simulada): `addInitScript` troca `getUserMedia` por um `canvas.captureStream(30)` de um canvas 1280×720 pintado de uma cor; Enter, Enter (pula a calibração, AC-1.8) e 10 escolhas pelas setas; no resumo, a `img` "Sua foto na partida" tem `src` começando com `data:image/jpeg` e `naturalWidth > 0`, a faixa "Match do Saber · N de 10" aparece, e o polaroid, o placar e a lista de técnicas cabem em 1366×768 sem se sobrepor; nenhuma requisição levou `data:image` e nenhum valor do `localStorage` contém `data:image`; Enter leva à calibração e Esc à espera, e na partida seguinte jogada sem o card do meio (Esc antes dele) não há foto.
+  - Se o MediaPipe não iniciar no Chromium sem interface (a câmera fica "indisponível" e não há foto), não criar caminho de código só para teste: marcar esse teste com `test.fixme` e um comentário com o motivo, reportar DONE_WITH_CONCERNS e deixar a checagem para a Fase 25.
+- [ ] Em `tests/e2e/diagnostico.spec.ts`, no teste que baixa o registro, acrescentar `expect(conteudo).not.toContain('data:image')` (AC-13.5).
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS.
+- [ ] Commit: `feat(resumo): polaroid photo from the middle of the match (Phase 24.2: Captura e polaroid)`
+
+---
+
+## Phase 25 (added v7.0.0): Verificação da foto no hardware
+
+**Implements:** FR-13 | **Satisfies:** AC-13.1–AC-13.5 (hardware)
+
+- [ ] No notebook do estande, nos três modos, jogar uma partida de 10 cards: a foto do resumo é do 5º card, espelhada, sem esqueleto, nítida e com a pessoa enquadrada no recorte quadrado.
+- [ ] Na TV, conferir que o polaroid, os pontos e as técnicas cabem sem cortes e são legíveis a ~2 m.
+- [ ] Enter, Sair e Esc apagam a foto; com "Foto no resumo: Desligada", o resumo aparece sem polaroid.
+- [ ] Com `?diagnostico`, baixar o registro e conferir que não há imagem nele.
+- [ ] Nenhuma pausa ou travada perceptível no instante da foto.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5066,6 +5214,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-10 (v2.0.0) | 10, 12 |
   | FR-11 (v2.0.0) | 10, 11 |
   | FR-12 (v5.2.0) | 19 |
+  | FR-13 (v7.0.0) | 24, 25 |
 
 - **ACs:** todas as 38 (AC-1.1–1.6, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.6, 6.1–6.4, 7.1–7.5, 8.1–8.3) aparecem num `Satisfies`. AC-1.5, 2.1–2.4, 2.6, 3.1 e 7.1 têm teste automatizado da lógica e verificação manual com hardware ou planilha real na Fase 7.
 - **Limitação conhecida:** o cenário de erro "jogo aberto offline antes de qualquer abertura online" só pode mostrar a mensagem da spec quando o shell do app já está em cache. Na primeiríssima abertura sem rede, o navegador mostra a própria página de erro, porque não há código do app para rodar. O app cobre o caso parcial (shell presente, catálogo ausente ou inválido).
@@ -5095,3 +5244,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 6.0.0 | 21 | Adicionada: verificação no hardware |
 | 6.1.0 | 22 | Adicionada: dica de gestos do modo Mão cita os três jeitos de escolher |
 | 6.1.0 | 23 | Adicionada: verificação da dica no hardware |
+| 7.0.0 | 10 | Parcialmente invalidada: o menu passa de três para quatro itens; reescrito na Fase 24.1 |
+| 7.0.0 | 24 | Adicionada: foto polaroid no resumo e item "Foto no resumo" |
+| 7.0.0 | 25 | Adicionada: verificação no hardware |

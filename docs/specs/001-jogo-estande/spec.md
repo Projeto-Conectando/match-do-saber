@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 6.1.0
+**Version:** 7.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-29
 **Branch:** `001-jogo-estande`
@@ -23,6 +23,7 @@
 | 5.2.0 | 2026-10-28 | Adicionados Story 12 e FR-12: modo de diagnóstico, ligado só pelo endereço com `?diagnostico`, que mostra quadros por segundo, tempo de detecção da pose, pontos e confiança de pulsos, ombros e cabeça e os gestos recentes, e permite baixar um registro dos últimos 60 s. Serve para ajustar os limites dos gestos com dados do notebook real; o jogo normal não muda |
 | 6.0.0 | 2026-10-29 | Modo Mão ganha mais dois jeitos de escolher o lado, além de levantar a mão: as duas mãos para um lado (AC-9.19) e arrastar uma mão do centro do peito para o lado (AC-9.20). A pausa por ausência (AC-5.3 a AC-5.5) passa a valer só no modo Corpo; nos modos Mão e Cabeça a partida ignora a ausência (AC-9.21). Causa: no modo Mão a câmera perdia a pessoa ao levantar a mão e a barra de tempo parava |
 | 6.1.0 | 2026-10-29 | A dica de gestos do modo Mão (AC-9.14) passa a citar os três jeitos de escolher o lado da v6.0.0: levantar a mão, as duas mãos para o lado e arrastar para o lado. Os gestos não mudam |
+| 7.0.0 | 2026-10-29 | Adicionados Story 13 e FR-13: o resumo mostra um card polaroid com uma foto da câmera tirada no meio da partida, guardada só na memória e apagada quando o resumo fecha. Reescritos a regra "Must not" de FR-2 (a foto do resumo é a única imagem da câmera guardada, só na memória), AC-9.1, AC-9.2, AC-9.4 e FR-9 (novo item "Foto no resumo" nas Configurações, ligado por padrão) |
 
 ---
 
@@ -38,12 +39,14 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - O jogo pode ser instalado no notebook e aberto por um ícone, como um aplicativo.
 - Uma pessoa não programadora publica ou altera notícias sem ajuda técnica, e só notícias aprovadas, com fonte e revisor, chegam ao jogo.
 - Nenhuma imagem da câmera e nenhum dado de jogador sai do notebook ou fica salvo.
+- No fim da partida, o jogador vê um card polaroid com uma foto dele tirada no meio da partida; a foto some quando o resumo fecha.
 - Jogadores com baixa mobilidade completam uma partida sem tocar no notebook, usando o modo Mão (levantar uma mão) ou o modo Cabeça (inclinar a cabeça), escolhido pelo operador.
 - O operador ajusta o tempo por card ao público (de 10 a 30 s), liga ou desliga o som, e inicia ou encerra uma partida com um clique.
 
 ## Non-Goals
 
-- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo. (Os únicos valores guardados no notebook são as configurações do estande escolhidas pelo operador: modo de jogo, tempo por card e som. Não são dados de jogador.)
+- Ranking, apelidos, contas de usuário ou qualquer dado de jogador salvo. (Os únicos valores guardados no notebook são as configurações do estande escolhidas pelo operador: modo de jogo, tempo por card, som e foto no resumo. Não são dados de jogador.)
+- Levar a foto da partida: baixar, imprimir, enviar ou gerar QR code.
 - Modo para celular individual ou para sala de aula.
 - Multiplayer ou várias pessoas jogando ao mesmo tempo.
 - Painel administrativo próprio: a planilha de conteúdo é o painel.
@@ -185,10 +188,10 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 **Acceptance criteria:**
 
-- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica no botão "⚙" fixo no canto superior direito da tela, de nome acessível "Configurações") Then abre o menu "Configurações" com três itens e os valores atuais marcados: "Modo de jogo" (Corpo, Mão, Cabeça), "Tempo por card" (10, 15, 20, 25 ou 30 s) e "Som" (Ligado, Desligado).
-- [ ] **AC-9.2** Given o menu "Configurações" está aberto When o operador muda um valor (↑/↓ escolhem o item, ←/→ mudam o valor; ou clique no valor) Then o valor muda na hora, fica guardado, e a tela de espera passa a mostrar o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
+- [ ] **AC-9.1** Given o jogo está na tela de espera When o operador pressiona M (ou clica no botão "⚙" fixo no canto superior direito da tela, de nome acessível "Configurações") Then abre o menu "Configurações" com quatro itens e os valores atuais marcados: "Modo de jogo" (Corpo, Mão, Cabeça), "Tempo por card" (10, 15, 20, 25 ou 30 s), "Som" (Ligado, Desligado) e "Foto no resumo" (Ligada, Desligada).
+- [ ] **AC-9.2** Given o menu "Configurações" está aberto When o operador muda um valor (↑/↓ escolhem o item, ←/→ mudam o valor; ou clique no valor) Then o valor muda na hora, fica guardado, e a tela de espera passa a mostrar o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado> · Foto: <ligada|desligada>".
 - [ ] **AC-9.3** Given o menu está aberto When o operador pressiona Esc, M ou Enter, ou clica no "✕" do painel (nome acessível "Fechar") Then o menu fecha mantendo os valores escolhidos, e nenhuma partida começa.
-- [ ] **AC-9.4** Given nada foi configurado antes neste notebook When o jogo é aberto Then as configurações são: modo Corpo, 15 s por card e som ligado.
+- [ ] **AC-9.4** Given nada foi configurado antes neste notebook When o jogo é aberto Then as configurações são: modo Corpo, 15 s por card, som ligado e foto no resumo ligada.
 - [ ] **AC-9.5** Given o operador mudou as configurações When o jogo é fechado e reaberto, inclusive sem internet Then as mesmas configurações continuam ativas.
 - [ ] **AC-9.6** Given o jogo não está na tela de espera When o operador pressiona M Then nada acontece: as configurações só mudam entre partidas.
 - [ ] **AC-9.7** Given o modo Mão e um card na tela When o jogador mantém a **própria mão direita** acima do ombro por ~300 ms Then o card é registrado como "match" e sai pela direita; com a **mão esquerda**, como "descarte" e sai pela esquerda.
@@ -252,6 +255,20 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-12.5** Given o modo de diagnóstico está ligado When o jogo roda Then nenhuma medição sai do notebook nem fica guardada no navegador; o arquivo só existe se o operador clicar em "Baixar registro", e nenhuma imagem da câmera entra no registro.
 - [ ] **AC-12.6** Given o modo de diagnóstico está ligado When uma partida acontece Then o jogo se comporta exatamente como sem ele: mesmos tempos, gestos, pontos e telas.
 
+### Story 13: Ver minha foto no fim da partida (adicionado v7.0.0)
+
+**As a** jogador
+**I want** ver no resumo uma foto minha jogando, no estilo de um card polaroid
+**So that** o fim da partida fique mais divertido e dê vontade de jogar de novo
+
+**Acceptance criteria:**
+
+- [ ] **AC-13.1** Given a câmera está ativa e "Foto no resumo" está Ligada When a escolha (ou o tempo esgotado) do card do meio da partida é registrada (o card ⌈M/2⌉, ou seja, o 5º numa partida de 10) Then o jogo guarda na memória um quadro da câmera daquele instante, sem som, aviso ou pausa.
+- [ ] **AC-13.2** Given uma foto foi guardada na partida When a tela de resumo aparece Then, junto com os pontos e as técnicas (AC-5.1), aparece um card no estilo polaroid com a foto, espelhada como a prévia (AC-2.6) e sem o esqueleto, e a faixa "Match do Saber · N de M"; nada do resumo fica cortado ou coberto em 1366×768 (FR-4).
+- [ ] **AC-13.3** Given a câmera estava indisponível ou não autorizada no card do meio, "Foto no resumo" está Desligada, ou a captura falhou When a tela de resumo aparece Then ela fica como sem a foto (AC-5.1): sem polaroid e sem espaço vazio no lugar dele.
+- [ ] **AC-13.4** Given há uma foto guardada When o operador inicia uma nova partida pelo resumo (Enter), usa "✕ Sair" ou Esc, ou a partida termina sem resumo Then a foto é apagada da memória e não aparece em nenhuma partida seguinte.
+- [ ] **AC-13.5** Given "Foto no resumo" está Ligada When uma partida acontece, com ou sem `?diagnostico` Then a foto não aparece em nenhuma requisição de rede, no armazenamento do navegador nem no registro do diagnóstico.
+
 ## Functional Requirements
 
 ### FR-1: Fluxo de estados da partida
@@ -284,7 +301,7 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 - Mostrar a prévia espelhada com esqueleto. O card não acompanha o movimento do jogador (AC-2.3).
 
 **Must not:**
-- Gravar, armazenar ou transmitir imagens ou vídeo da câmera.
+- Gravar ou transmitir imagens ou vídeo da câmera, ou guardá-los em disco ou no navegador. A única imagem da câmera guardada é a foto do resumo (FR-13), só na memória e só até o resumo fechar.
 - Registrar duas escolhas para um mesmo card.
 
 ### FR-3: Entrada alternativa
@@ -344,14 +361,15 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ### FR-9: Configurações do estande — modos acessíveis, tempo e som (reescrito v2.0.0)
 
 **Must:**
-- Oferecer, na tela de espera, o menu "Configurações" (tecla M ou botão "⚙" no canto superior direito, de nome acessível "Configurações"), aberto como painel lateral à direita (AC-9.18), com três itens:
+- Oferecer, na tela de espera, o menu "Configurações" (tecla M ou botão "⚙" no canto superior direito, de nome acessível "Configurações"), aberto como painel lateral à direita (AC-9.18), com quatro itens:
   - "Modo de jogo": Corpo (padrão, FR-2), Mão ou Cabeça.
   - "Tempo por card": 10, 15 (padrão), 20, 25 ou 30 s.
   - "Som": Ligado (padrão) ou Desligado.
+  - "Foto no resumo": Ligada (padrão) ou Desligada (FR-13).
 - Navegar no menu com ↑/↓ (item) e ←/→ (valor), ou com clique; fechar com Esc, M, Enter ou o "✕" do painel ("Fechar"), sem iniciar partida.
-- Mostrar na tela de espera o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
+- Mostrar na tela de espera o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado> · Foto: <ligada|desligada>".
 - Aplicar o tempo por card a todos os cards da partida (AC-1.2, AC-4.4, AC-9.17).
-- Guardar as três configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
+- Guardar as quatro configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
 - Modo Mão: escolher o lado de três jeitos, qualquer um vale: (1) própria mão direita acima do ombro (~300 ms) = match, mão esquerda = descarte (AC-9.7); (2) as duas mãos, abaixo dos ombros, levadas juntas para um lado além da linha do ombro (~300 ms) (AC-9.19); (3) arrastar uma mão do centro do peito para um lado, ≥ 1 largura de ombro em até ~0,8 s (AC-9.20). As duas mãos acima dos ombros (~500 ms) = saiba mais. Entre duas escolhas, exigir desfazer o gesto (AC-9.22). Medir as distâncias em larguras de ombro, para valer perto ou longe da câmera.
 - Nos modos Mão e Cabeça, ignorar a ausência da pessoa durante o card (AC-9.21); a calibração continua exigindo a pessoa no centro.
 - Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; manter o card parado até a escolha (AC-2.3, AC-9.13).
@@ -362,7 +380,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 
 **Must not:**
 - Mudar qualquer configuração durante uma partida.
-- Guardar no notebook qualquer coisa além das três configurações.
+- Guardar no notebook qualquer coisa além das quatro configurações.
 - Usar outra fonte de imagem além da câmera já autorizada, nem enviar imagens para fora do notebook.
 
 ### FR-10: Iniciar e sair (adicionado v2.0.0)
@@ -401,6 +419,19 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Enviar medições pela rede, gravá-las no navegador ou incluir imagens da câmera.
 - Mudar o comportamento do jogo (AC-12.6).
 
+### FR-13: Foto polaroid no resumo (adicionado v7.0.0)
+
+**Must:**
+- Com a câmera ativa e "Foto no resumo" Ligada, guardar na memória um quadro da câmera no instante em que a escolha (ou o tempo esgotado) do card ⌈M/2⌉ é registrada (AC-13.1).
+- Mostrar no resumo um card polaroid com a foto espelhada, sem esqueleto, e a faixa "Match do Saber · N de M", ao lado dos pontos e das técnicas, sem cortar nada em 1366×768 (AC-13.2).
+- Mostrar o resumo sem polaroid quando não houver foto (AC-13.3).
+- Apagar a foto ao iniciar nova partida, ao sair (Sair ou Esc) e em qualquer fim de partida sem resumo (AC-13.4).
+
+**Must not:**
+- Salvar a foto em disco ou no navegador, enviá-la pela rede ou incluí-la no registro do diagnóstico (AC-13.5).
+- Oferecer download, impressão, envio ou QR code da foto.
+- Atrasar ou pausar a partida para tirar a foto.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -413,6 +444,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 ### Security
 
 - Nenhuma requisição de rede contém imagem ou vídeo da câmera ou dados do jogador, o que é verificável pelo registro de rede do navegador durante uma partida.
+- A foto do resumo (FR-13) existe só na memória da página, enquanto o resumo daquela partida não fecha.
 - O jogo não usa cookies, rastreadores nem scripts de análise de terceiros.
 - O acesso de leitura à planilha e o direito de disparar a publicação ficam em credenciais guardadas fora do código do jogo. O jogo publicado não contém nenhuma credencial.
 - A câmera só é ativada depois de o navegador pedir e o operador autorizar.
@@ -439,8 +471,9 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 | Planilha inacessível na publicação | A publicação falha com mensagem no resumo; o jogo publicado continua com o conteúdo anterior (AC-7.5). |
 | Jogo aberto offline antes de qualquer abertura online | Tela "Conecte à internet uma vez para baixar o jogo". |
 | Jogo offline com versão antiga | Joga normalmente com o conteúdo em cache; atualiza na próxima abertura online. |
-| Configuração guardada ausente, inválida ou armazenamento do navegador indisponível | O jogo abre com o padrão daquele item (Corpo, 15 s, som ligado); o menu continua funcionando, e a escolha vale até o jogo ser fechado. |
+| Configuração guardada ausente, inválida ou armazenamento do navegador indisponível | O jogo abre com o padrão daquele item (Corpo, 15 s, som ligado, foto ligada); o menu continua funcionando, e a escolha vale até o jogo ser fechado. |
 | Navegador bloqueia o som até a primeira interação com a página | O jogo funciona normalmente, sem som, até o primeiro clique ou tecla; a partir daí os sons tocam (o operador clica uma vez ao abrir o jogo). |
+| Câmera indisponível no card do meio, ou a captura da foto falha | O resumo aparece sem polaroid (AC-13.3); a partida não é afetada. |
 | No modo Mão ou Cabeça, o jogador não consegue fazer o gesto | O operador troca o modo entre partidas, ou joga pelas setas (FR-3). |
 
 ## Open Questions
@@ -498,6 +531,11 @@ Decisões da v6.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
 Decisões da v6.1.0, confirmadas pela responsável pelo projeto em 2026-10-29:
 - A dica do modo Mão agrupa os gestos por resultado: "É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais".
 - A dica continua nos mesmos lugares (calibração, ao lado do card e no menu Configurações) e não pode cobrir o card nem o painel de diagnóstico.
+
+Decisões da v7.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
+- O resumo ganha um card polaroid com uma foto da câmera tirada no meio da partida (card ⌈M/2⌉), com a faixa "Match do Saber · N de M".
+- A foto fica só na tela: guardada na memória e apagada quando o resumo fecha; nada é salvo, baixado ou enviado. Por isso o Princípio 3 (privacidade por padrão) não precisa de emenda: nenhum dado de jogador é coletado.
+- O operador pode desligar a foto no menu Configurações ("Foto no resumo", ligada por padrão), por exemplo quando uma escola ou um responsável pedir.
 
 ## Out of Scope (Future Considerations)
 
