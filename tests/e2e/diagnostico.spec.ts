@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 const CAMERA_OFF = 'Câmera desativada — jogue pelas setas (Enter para começar)';
-const DICA_CABECA = 'Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais';
+const DICA_MAO = 'É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais';
 
 async function abrirSemCamera(page: Page, url: string) {
   await page.addInitScript(() => {
@@ -29,13 +29,12 @@ test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o ca
   await expect(painel).toContainText(/quadros\/s: [1-9]/);
 
   await page.keyboard.press('m');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight');                                                // modo → Cabeça (dica mais longa)
+  await page.keyboard.press('ArrowRight');                                                // modo → Mão (dica mais longa)
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   const card = page.locator('article');
   await expect(card).toBeVisible();
-  await expect(page.getByText(DICA_CABECA)).toBeVisible();
+  await expect(page.getByText(DICA_MAO)).toBeVisible();
 
   // AC-12.3: com as linhas mais longas medidas no estande, nenhuma linha é cortada e o painel
   // não cobre o card, os pontos nem a dica do modo. Injeta e mede na mesma chamada síncrona,
@@ -44,7 +43,7 @@ test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o ca
     const painelEl = document.querySelector('aside[aria-label="Diagnóstico"]')!;
     const linhas = [...painelEl.querySelectorAll('p')];
     const longas: Record<number, string> = {
-      2: 'pessoas: 1 · modo: Cabeça · tela: calibracao',
+      2: 'pessoas: 1 · modo: Mão · tela: calibracao',
       3: 'punho D: y=0.31 conf 0.92 · acima do ombro',
       4: 'punho E: y=0.31 conf 0.92 · acima do ombro',
       5: 'ombros: y=0.45 / 0.46 conf 0.99 / 0.98',
@@ -65,7 +64,7 @@ test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o ca
         dica: caixa(ps.find((p) => p.textContent === dica)),
       },
     };
-  }, [DICA_CABECA]);
+  }, [DICA_MAO]);
   for (const l of medida.linhas) expect(l.scrollWidth, l.texto!).toBeLessThanOrEqual(l.clientWidth);
   const a = medida.painel;
   for (const [nome, b] of Object.entries(medida.outros)) {
