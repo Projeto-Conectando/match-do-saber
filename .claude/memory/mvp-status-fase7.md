@@ -1,6 +1,6 @@
 ---
 name: mvp-status-fase7
-description: MVP 001-jogo-estande (spec v6.0.0, com gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
+description: MVP 001-jogo-estande (spec v6.1.0, com gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
 metadata:
   type: project
 ---
@@ -19,7 +19,9 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v5.1.0, mergeado em 2026-10-28) Fase 18: na TV do estande, conferir que o botão ⚙ (canto superior direito) é fácil de achar e que o painel lateral de Configurações é legível.
 - (2026-10-28) Relógio do jogo agora segue o tempo real (antes, com a detecção de pose lenta, a barra andava a ~65%). Medido aqui: a detecção deixa o jogo a ~6–7 fps (meta da spec ≥15). Pendente: medir fps e rastreio das mãos no notebook real antes de mudar limites; possível modo de diagnóstico na tela (proposto, não feito).
 - (v5.2.0, mergeado em 2026-10-28) Modo de diagnóstico em `?diagnostico` (painel + "Baixar registro (60 s)").
-- (v6.0.0, mergeado em 2026-10-29) Bug da barra parada no modo Mão RESOLVIDO: causa era a pausa por ausência quando a detecção perdia a pessoa ao levantar a mão (confirmado: Enter duas vezes funcionava). Agora Mão/Cabeça ignoram ausência. Modo Mão ganhou "duas mãos para um lado" e "arrastar do centro". Fase 21 pendente: testar os gestos no notebook com `?diagnostico` (inclusive "V" e braços abertos) e ajustar `duasMaosLadoL`, `centroArrasteL`, `arrasteMinL`, `arrasteMaxMs`. Dica de gestos na tela (AC-9.14) ainda não cita os gestos novos (exige spec-update).
+- (v6.0.0, mergeado em 2026-10-29) Bug da barra parada no modo Mão RESOLVIDO: causa era a pausa por ausência quando a detecção perdia a pessoa ao levantar a mão (confirmado: Enter duas vezes funcionava). Agora Mão/Cabeça ignoram ausência. Modo Mão ganhou "duas mãos para um lado" e "arrastar do centro". Fase 21 pendente: testar os gestos no notebook com `?diagnostico` (inclusive "V" e braços abertos) e ajustar `duasMaosLadoL`, `centroArrasteL`, `arrasteMinL`, `arrasteMaxMs`.
+- (v6.1.0, mergeado em 2026-10-29) A dica do modo Mão (AC-9.14) agora cita os três jeitos de escolher. Fase 23 pendente: conferir na TV a 1,5–2 m que a dica é legível e não cobre o card nem a barra.
+- Planilha: aba `noticias` criada pela `configurarPlanilha` (2026-10-29); faltam a conta de serviço Google (Parte 2) e o GitHub/secrets/token (Parte 3) do guia.
 - O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
 
 **Why:** o código só foi verificado sem câmera e sem contas reais; nada foi publicado.
