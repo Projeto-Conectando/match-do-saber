@@ -1,9 +1,9 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 6.0.0
+**Version:** 6.1.0
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-10-29
 **Branch:** `001-jogo-estande`
 **Origem:** [prd.md](prd.md) · ADRs: [frontend-stack](../../adr/001-frontend-stack.md), [motion-input](../../adr/001-motion-input.md), [content-pipeline](../../adr/001-content-pipeline.md)
 
@@ -22,6 +22,7 @@
 | 5.1.0 | 2026-10-28 | Configurações no canto superior direito: o botão vira "⚙" fixo no canto superior direito da tela de espera (AC-9.1) e o menu abre como painel lateral à direita (novo AC-9.18); o painel fecha também pelo "✕" (AC-9.3). Itens, teclas e regras do menu não mudam |
 | 5.2.0 | 2026-10-28 | Adicionados Story 12 e FR-12: modo de diagnóstico, ligado só pelo endereço com `?diagnostico`, que mostra quadros por segundo, tempo de detecção da pose, pontos e confiança de pulsos, ombros e cabeça e os gestos recentes, e permite baixar um registro dos últimos 60 s. Serve para ajustar os limites dos gestos com dados do notebook real; o jogo normal não muda |
 | 6.0.0 | 2026-10-29 | Modo Mão ganha mais dois jeitos de escolher o lado, além de levantar a mão: as duas mãos para um lado (AC-9.19) e arrastar uma mão do centro do peito para o lado (AC-9.20). A pausa por ausência (AC-5.3 a AC-5.5) passa a valer só no modo Corpo; nos modos Mão e Cabeça a partida ignora a ausência (AC-9.21). Causa: no modo Mão a câmera perdia a pessoa ao levantar a mão e a barra de tempo parava |
+| 6.1.0 | 2026-10-29 | A dica de gestos do modo Mão (AC-9.14) passa a citar os três jeitos de escolher o lado da v6.0.0: levantar a mão, as duas mãos para o lado e arrastar para o lado. Os gestos não mudam |
 
 ---
 
@@ -197,7 +198,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-9.11** Given o modo Cabeça e um card na tela When o jogador levanta o queixo (olha para cima) e mantém por ~500 ms Then o "saiba mais" abre (ou fecha, se já estiver aberto) e nenhuma escolha é registrada.
 - [ ] **AC-9.12** Given o modo Cabeça e o jogador acabou de fazer uma escolha When o próximo card aparece com a cabeça ainda inclinada Then nenhuma nova escolha é aceita até ele voltar a cabeça ao centro.
 - [ ] **AC-9.13** Given o modo Cabeça e um card na tela When o jogador inclina a cabeça sem atingir o limiar Then o card fica parado (AC-2.3) e nenhuma escolha é registrada.
-- [ ] **AC-9.14** Given o modo Mão ou Cabeça When a tela de calibração ou um card aparece Then as instruções mostram os gestos do modo ativo: Mão — "Mão direita: é verdade · Mão esquerda: é falsa · Duas mãos para cima: saiba mais"; Cabeça — "Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais".
+- [ ] **AC-9.14** Given o modo Mão ou Cabeça When a tela de calibração ou um card aparece Then as instruções mostram os gestos do modo ativo: Mão — "É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais"; Cabeça — "Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais".
 - [ ] **AC-9.15** Given o modo Mão ou Cabeça e um jogador sentado diante da câmera, com ombros e rosto visíveis When ele fica no centro por 2 s Then a calibração conclui e a partida começa.
 - [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
 - [ ] **AC-9.17** Given o tempo por card configurado em N s When um card aparece Then o cronômetro começa em N s e o tempo esgota depois de N s; no menu, ← em 10 s e → em 30 s não mudam o valor.
@@ -493,6 +494,10 @@ Decisões da v6.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
 - No modo Mão valem três gestos para escolher o lado: levantar a mão, as duas mãos para um lado e arrastar do centro para o lado.
 - Regras de partida: punhos abaixo do ombro e além da linha do ombro (> 0,5 largura de ombro do meio do corpo) por ~300 ms; arraste a partir de < 0,5 largura de ombro do meio, andando ≥ 1 largura de ombro em até ~0,8 s. Ajustáveis com o registro do diagnóstico.
 - Nos modos Mão e Cabeça a partida nunca pausa nem termina por ausência; no modo Corpo continua como antes.
+
+Decisões da v6.1.0, confirmadas pela responsável pelo projeto em 2026-10-29:
+- A dica do modo Mão agrupa os gestos por resultado: "É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais".
+- A dica continua nos mesmos lugares (calibração, ao lado do card e no menu Configurações) e não pode cobrir o card nem o painel de diagnóstico.
 
 ## Out of Scope (Future Considerations)
 
