@@ -39,7 +39,14 @@ export type Evento =
   | { tipo: 'sair' };
 
 /** `tempoCardMs`: tempo por card configurado (FR-9); sem valor, vale `TEMPOS.cardMs`. */
-export interface Contexto { noticias: Noticia[]; rng: () => number; cameraAtiva: boolean; tempoCardMs?: number }
+export interface Contexto {
+  noticias: Noticia[];
+  rng: () => number;
+  cameraAtiva: boolean;
+  tempoCardMs?: number;
+  /** v6.0.0 (AC-9.21): nos modos Mão e Cabeça a ausência não pausa nem encerra a partida. */
+  ignorarAusencia?: boolean;
+}
 
 export const ESTADO_INICIAL: Estado = { tela: 'espera' };
 const CALIBRACAO: Estado = { tela: 'calibracao', centradoMs: 0, ausenteMs: 0 };
@@ -94,8 +101,8 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
       }
       if (evento.tipo === 'saibaMais') return { ...estado, saibaMais: !estado.saibaMais };
       if (evento.tipo !== 'tick') return estado;
-      // Partida pelo teclado/mouse (AC-1.6) não depende de presença.
-      const p = estado.partida.entrada === 'alternativa' ? null : evento.presenca;
+      // Partida pelo teclado/mouse (AC-1.6) ou nos modos Mão/Cabeça (AC-9.21) não depende de presença.
+      const p = estado.partida.entrada === 'alternativa' || ctx.ignorarAusencia ? null : evento.presenca;
       if (p && !p.presente) {
         const ausenteMs = (estado.ausenteMs ?? 0) + evento.dtMs;
         return ausenteMs >= TEMPOS.ausenciaMs ? ESTADO_INICIAL : { ...estado, ausenteMs };

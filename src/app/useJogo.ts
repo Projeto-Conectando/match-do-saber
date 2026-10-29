@@ -25,8 +25,8 @@ const EVENTO_DA_TECLA: Record<string, Evento | undefined> = {
 
 export function useJogo(noticias: Noticia[], config: Configuracoes = CONFIG_PADRAO, pausado = false, registro?: Registro) {
   const [camera, setCamera] = useState<StatusCamera>('carregando');
-  const ctx = useRef<Contexto>({ noticias, rng: Math.random, cameraAtiva: false, tempoCardMs: config.tempoCardS * 1000 });
-  ctx.current = { noticias, rng: Math.random, cameraAtiva: camera === 'ativa', tempoCardMs: config.tempoCardS * 1000 };
+  const ctx = useRef<Contexto>({ noticias, rng: Math.random, cameraAtiva: false, tempoCardMs: config.tempoCardS * 1000, ignorarAusencia: config.modo !== 'corpo' });
+  ctx.current = { noticias, rng: Math.random, cameraAtiva: camera === 'ativa', tempoCardMs: config.tempoCardS * 1000, ignorarAusencia: config.modo !== 'corpo' };
   const [estado, despachar] = useReducer((s: Estado, e: Evento) => reduzir(s, e, ctx.current), ESTADO_INICIAL);
 
   const videoRef = useRef<HTMLVideoElement>(null);
