@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 5.2.0
+**Version:** 6.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 **Branch:** `001-jogo-estande`
@@ -21,6 +21,7 @@
 | 5.0.0 | 2026-10-28 | O tempo do card não pausa mais com o "saiba mais" aberto: reescritos AC-3.1, AC-3.2, AC-4.7 e FR-1; removido AC-3.5 (o "saiba mais" não fecha mais sozinho). Só "Volte para o centro" pausa o cronômetro. Causa: a barra de tempo e sua animação ficavam paradas com o "saiba mais" aberto, porque a regra pausava o cronômetro |
 | 5.1.0 | 2026-10-28 | Configurações no canto superior direito: o botão vira "⚙" fixo no canto superior direito da tela de espera (AC-9.1) e o menu abre como painel lateral à direita (novo AC-9.18); o painel fecha também pelo "✕" (AC-9.3). Itens, teclas e regras do menu não mudam |
 | 5.2.0 | 2026-10-28 | Adicionados Story 12 e FR-12: modo de diagnóstico, ligado só pelo endereço com `?diagnostico`, que mostra quadros por segundo, tempo de detecção da pose, pontos e confiança de pulsos, ombros e cabeça e os gestos recentes, e permite baixar um registro dos últimos 60 s. Serve para ajustar os limites dos gestos com dados do notebook real; o jogo normal não muda |
+| 6.0.0 | 2026-10-29 | Modo Mão ganha mais dois jeitos de escolher o lado, além de levantar a mão: as duas mãos para um lado (AC-9.19) e arrastar uma mão do centro do peito para o lado (AC-9.20). A pausa por ausência (AC-5.3 a AC-5.5) passa a valer só no modo Corpo; nos modos Mão e Cabeça a partida ignora a ausência (AC-9.21). Causa: no modo Mão a câmera perdia a pessoa ao levantar a mão e a barra de tempo parava |
 
 ---
 
@@ -132,9 +133,9 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-5.1** Given o último card da partida teve seu feedback concluído When a partida termina Then a tela de resumo mostra os pontos no formato "N de M" e a lista das técnicas de checagem que apareceram na partida, sem repetição.
 - [ ] **AC-5.2** Given a tela de resumo está aberta When o tempo passa sem ação do operador Then o resumo continua na tela, sem limite de tempo, mesmo que o jogador saia do quadro.
 - [ ] **AC-5.6** Given a tela de resumo está aberta When o operador pressiona Enter (iniciar nova partida) Then o resumo fecha, nada da partida anterior é guardado e o jogo vai para a calibração da nova partida (ou inicia direto pela entrada alternativa, se a câmera estiver indisponível).
-- [ ] **AC-5.3** Given uma partida está em andamento When ninguém é detectado na câmera Then o cronômetro pausa e aparece a mensagem "Volte para o centro".
-- [ ] **AC-5.4** Given a mensagem "Volte para o centro" está na tela When a pessoa volta ao quadro antes de 10 s Then a partida continua do mesmo card, com o cronômetro retomando de onde parou.
-- [ ] **AC-5.5** Given a mensagem "Volte para o centro" está na tela When se passam 10 s sem ninguém no quadro Then a partida é encerrada sem resumo e o jogo volta à tela de espera e permanece nela, mesmo que a pessoa volte ao quadro depois (AC-1.1).
+- [ ] **AC-5.3** Given uma partida no modo Corpo, iniciada pela calibração, está em andamento When ninguém é detectado na câmera Then o cronômetro pausa e aparece a mensagem "Volte para o centro".
+- [ ] **AC-5.4** Given a mensagem "Volte para o centro" está na tela (só no modo Corpo, AC-5.3) When a pessoa volta ao quadro antes de 10 s Then a partida continua do mesmo card, com o cronômetro retomando de onde parou.
+- [ ] **AC-5.5** Given a mensagem "Volte para o centro" está na tela (só no modo Corpo, AC-5.3) When se passam 10 s sem ninguém no quadro Then a partida é encerrada sem resumo e o jogo volta à tela de espera e permanece nela, mesmo que a pessoa volte ao quadro depois (AC-1.1).
 
 ### Story 6: Montar uma partida equilibrada
 
@@ -201,6 +202,10 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-9.16** Given qualquer modo de jogo When o operador usa as setas, Enter ou o mouse/toque Then a entrada alternativa funciona exatamente como em FR-3.
 - [ ] **AC-9.17** Given o tempo por card configurado em N s When um card aparece Then o cronômetro começa em N s e o tempo esgota depois de N s; no menu, ← em 10 s e → em 30 s não mudam o valor.
 - [ ] **AC-9.18** Given a tela de espera When o menu "Configurações" abre Then ele aparece como um painel encostado na borda direita, com a altura da tela inteira e largura de até 26rem, sobre o restante da tela escurecido; o título "Configurações" e o "✕" ficam no topo do painel, e o botão "▶ Iniciar" continua no mesmo lugar.
+- [ ] **AC-9.19** Given o modo Mão e um card na tela When o jogador leva as duas mãos juntas, abaixo da altura dos ombros, para o **próprio lado direito** até os dois punhos passarem da linha do ombro direito (mais de 0,5 largura de ombro do meio do corpo) e segura por ~300 ms Then o card é registrado como "match"; para o lado esquerdo, como "descarte".
+- [ ] **AC-9.20** Given o modo Mão e um card na tela When o jogador arrasta uma mão (qualquer uma) do centro do peito (a menos de 0,5 largura de ombro do meio do corpo) para o **próprio lado direito**, andando pelo menos 1 largura de ombro em até ~0,8 s Then o card é registrado como "match"; para o lado esquerdo, como "descarte".
+- [ ] **AC-9.21** Given o modo Mão ou Cabeça e uma partida iniciada pela calibração When a câmera deixa de detectar a pessoa por qualquer tempo durante o card Then o cronômetro continua correndo, "Volte para o centro" não aparece e a partida não é encerrada por ausência.
+- [ ] **AC-9.22** Given o modo Mão e o jogador acabou de escolher por qualquer um dos três gestos (AC-9.7, AC-9.19, AC-9.20) When o próximo card aparece Then nenhuma nova escolha é aceita até ele baixar as mãos e desfazer a posição de "duas mãos para um lado"; uma nova escolha por arraste precisa partir de novo do centro do peito.
 
 ### Story 10: Iniciar e sair com um clique (adicionado v2.0.0)
 
@@ -241,7 +246,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 
 - [ ] **AC-12.1** Given o jogo é aberto sem `?diagnostico` no endereço When qualquer tela aparece Then nenhum painel de diagnóstico é mostrado e nada é registrado.
 - [ ] **AC-12.2** Given o jogo é aberto com `?diagnostico` no endereço When qualquer tela aparece Then um painel "Diagnóstico" aparece no canto superior esquerdo, abaixo do lugar do "✕ Sair", sem cobrir o card (FR-4), e se atualiza pelo menos 2 vezes por segundo.
-- [ ] **AC-12.3** Given o painel de diagnóstico está na tela When a câmera está ativa Then ele mostra: quadros por segundo do último segundo; tempo médio e máximo da detecção de pose no último segundo, em ms; número de pessoas detectadas; modo de jogo e tela atuais; para punho direito, punho esquerdo, ombro direito e ombro esquerdo, a altura (y) e a confiança; se cada mão está acima do ombro pela regra do modo Mão; a inclinação da cabeça em graus e a medida do queixo; e os gestos reconhecidos nos últimos 5 s. Sem câmera, a linha da detecção mostra "sem câmera".
+- [ ] **AC-12.3** Given o painel de diagnóstico está na tela When a câmera está ativa Then ele mostra: quadros por segundo do último segundo; tempo médio e máximo da detecção de pose no último segundo, em ms; número de pessoas detectadas; modo de jogo e tela atuais; para punho direito, punho esquerdo, ombro direito e ombro esquerdo, a altura (y) e a confiança; se cada mão está acima do ombro pela regra do modo Mão e o deslocamento lateral de cada punho, em larguras de ombro; a inclinação da cabeça em graus e a medida do queixo; e os gestos reconhecidos nos últimos 5 s. Sem câmera, a linha da detecção mostra "sem câmera".
 - [ ] **AC-12.4** Given o painel de diagnóstico está na tela When o operador clica em "Baixar registro (60 s)" Then o navegador salva no notebook um arquivo `match-do-saber-diagnostico-<data e hora>.json` com as medições, quadro a quadro, dos últimos 60 s: horário, intervalo do quadro, tempo de detecção, pessoas, modo, tela, os pontos nariz, orelhas, ombros e punhos (x, y, confiança), as medidas das mãos e da cabeça e os gestos reconhecidos.
 - [ ] **AC-12.5** Given o modo de diagnóstico está ligado When o jogo roda Then nenhuma medição sai do notebook nem fica guardada no navegador; o arquivo só existe se o operador clicar em "Baixar registro", e nenhuma imagem da câmera entra no registro.
 - [ ] **AC-12.6** Given o modo de diagnóstico está ligado When uma partida acontece Then o jogo se comporta exatamente como sem ele: mesmos tempos, gestos, pontos e telas.
@@ -257,7 +262,7 @@ O jogo passa por estes estados: espera → calibração → card → (saiba mais
 - Ter o tempo por card configurado (padrão 15 s, FR-9), 3 s de feedback, e 10 s de tolerância sem pessoa no quadro.
 - Encerrar a partida a qualquer momento pelo botão "✕ Sair" ou por Esc (FR-10).
 - Manter o resumo na tela até o operador iniciar uma nova partida (Enter).
-- Pausar o cronômetro do card só durante "Volte para o centro"; com o "saiba mais" aberto o cronômetro continua correndo.
+- Pausar o cronômetro do card só durante "Volte para o centro", e só no modo Corpo (AC-5.3, AC-9.21); com o "saiba mais" aberto o cronômetro continua correndo.
 - Manter o "saiba mais" aberto até o jogador fechá-lo (gesto ou ↑), fazer uma escolha ou o tempo esgotar; ele não fecha sozinho.
 
 **Must not:**
@@ -346,7 +351,8 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 - Mostrar na tela de espera o resumo "Modo: <modo> · Tempo por card: <N> s · Som: <ligado|desligado>".
 - Aplicar o tempo por card a todos os cards da partida (AC-1.2, AC-4.4, AC-9.17).
 - Guardar as três configurações no próprio notebook e reaplicá-las ao reabrir o jogo, inclusive offline; valor ausente ou inválido usa o padrão daquele item.
-- Modo Mão: própria mão direita acima do ombro (~300 ms) = match; mão esquerda = descarte; as duas mãos acima dos ombros (~500 ms) = saiba mais; exigir baixar as mãos entre duas escolhas.
+- Modo Mão: escolher o lado de três jeitos, qualquer um vale: (1) própria mão direita acima do ombro (~300 ms) = match, mão esquerda = descarte (AC-9.7); (2) as duas mãos, abaixo dos ombros, levadas juntas para um lado além da linha do ombro (~300 ms) (AC-9.19); (3) arrastar uma mão do centro do peito para um lado, ≥ 1 largura de ombro em até ~0,8 s (AC-9.20). As duas mãos acima dos ombros (~500 ms) = saiba mais. Entre duas escolhas, exigir desfazer o gesto (AC-9.22). Medir as distâncias em larguras de ombro, para valer perto ou longe da câmera.
+- Nos modos Mão e Cabeça, ignorar a ausência da pessoa durante o card (AC-9.21); a calibração continua exigindo a pessoa no centro.
 - Modo Cabeça: inclinar a cabeça para o próprio lado direito (~15°, medido em relação à calibração, ~300 ms) = match; para o esquerdo = descarte; levantar o queixo (~500 ms) = saiba mais; exigir voltar a cabeça ao centro entre duas escolhas; manter o card parado até a escolha (AC-2.3, AC-9.13).
 - Nos modos Mão e Cabeça, detectar presença e centralização pela parte de cima do corpo (ombros e rosto), para que um jogador sentado consiga calibrar.
 - Mostrar nas instruções da calibração e do card os gestos do modo ativo (AC-9.14).
@@ -423,7 +429,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 | Operador nega a permissão da câmera | A tela de espera mostra "Câmera desativada — jogue pelas setas (Enter para começar)"; o jogo funciona só com a entrada alternativa. |
 | Nenhuma webcam no notebook | Mesmo comportamento da permissão negada. |
 | Câmera desconectada no meio da partida | Aviso "Câmera indisponível — use as setas"; a partida continua e o cronômetro não pausa. |
-| Jogador sai do quadro durante a partida | Pausa com "Volte para o centro"; retoma se ele voltar em até 10 s; senão encerra sem resumo e volta à espera (AC-5.3 a AC-5.5). |
+| Jogador sai do quadro durante a partida | No modo Corpo: pausa com "Volte para o centro"; retoma se ele voltar em até 10 s; senão encerra sem resumo e volta à espera (AC-5.3 a AC-5.5). Nos modos Mão e Cabeça: o tempo continua e nada aparece (AC-9.21). |
 | Iluminação ruim impede a detecção | A calibração não conclui e a mensagem "Fique no centro" continua; o operador pressiona Enter para pular a calibração e joga pelas setas (AC-1.8). |
 | Jogador sai do quadro, partida termina ou operador usa Sair, e alguém continua no quadro | O jogo fica na tela de espera até o operador iniciar de novo (AC-1.1, AC-10.3). |
 | Várias pessoas no quadro | Só a pessoa mais central e maior controla (AC-1.5). |
@@ -482,6 +488,11 @@ Decisões da v5.1.0, confirmadas pela responsável pelo projeto em 2026-10-28:
 Decisões da v5.2.0, confirmadas em 2026-10-28 (a responsável pediu para preparar o diagnóstico e deixou a variante a critério da equipe):
 - O diagnóstico inclui o painel na tela e o botão "Baixar registro (60 s)", porque um arquivo com dados do notebook real é o que permite ajustar os limites dos gestos sem tentativa.
 - Ele só liga com `?diagnostico` no endereço; o operador do evento usa o endereço normal.
+
+Decisões da v6.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
+- No modo Mão valem três gestos para escolher o lado: levantar a mão, as duas mãos para um lado e arrastar do centro para o lado.
+- Regras de partida: punhos abaixo do ombro e além da linha do ombro (> 0,5 largura de ombro do meio do corpo) por ~300 ms; arraste a partir de < 0,5 largura de ombro do meio, andando ≥ 1 largura de ombro em até ~0,8 s. Ajustáveis com o registro do diagnóstico.
+- Nos modos Mão e Cabeça a partida nunca pausa nem termina por ausência; no modo Corpo continua como antes.
 
 ## Out of Scope (Future Considerations)
 

@@ -12,6 +12,7 @@
 - Gestos: tronco para a **própria direita** = match (verdadeira); para a própria esquerda = descarte (falsa); dois punhos acima do nariz = saiba mais; ~300 ms / ~500 ms de permanência; retorno ao centro entre escolhas.
 - Entrada alternativa: → match, ← descarte, ↑ saiba mais, Enter iniciar; arrastar o card com mouse/toque.
 - (v1.1.0) Modos de jogo: Corpo (padrão), Mão (mão direita = match, esquerda = descarte, as duas = saiba mais) e Cabeça (inclinar para direita/esquerda; queixo para cima = saiba mais). Escolhidos pelo operador na tela de espera (tecla M), guardados no notebook até serem trocados; nunca mudam durante uma partida.
+- (v6.0.0) Modo Mão: escolher por levantar a mão, por duas mãos para um lado ou arrastando do centro para o lado. A pausa por ausência vale só no modo Corpo.
 - (v5.0.0) O cronômetro do card só pausa por "Volte para o centro": com o "saiba mais" aberto o tempo corre e a barra diminui; o "saiba mais" não fecha sozinho.
 - (v4.0.0) Card parado até a escolha (sem inclinar com o corpo/cabeça); cronômetro numa barra grossa na base da tela com os segundos; nos últimos 5 s barra vermelha e card pulsando em vermelho (pausado, não pulsa).
 - (v3.0.0) Início só manual: a câmera nunca inicia nada; "▶ Iniciar" ou Enter na espera abre a calibração (câmera ativa) ou começa direto (sem câmera); Enter na calibração a pula. Sair, ausência de 10 s e o fim de calibração vazia deixam o jogo na espera.
@@ -4720,6 +4721,290 @@ Decisões técnicas (inline):
 
 ---
 
+## Phase 20 (added v6.0.0): Gestos novos do modo Mão e ausência só no modo Corpo
+
+**Implements:** FR-9 (modo Mão; ausência por modo), FR-1, FR-12 (medidas) | **Satisfies:** AC-9.19, AC-9.20, AC-9.21, AC-9.22, AC-5.3–5.5 (só Corpo), AC-12.3
+**Files:** `src/core/gestos.ts`, `src/core/gestos-mao-v6.test.ts`, `src/core/gestos-medidas.test.ts`, `src/core/partida.ts`, `src/core/partida.test.ts`, `src/app/useJogo.ts`, `src/app/PainelDiagnostico.tsx`, `src/app/PainelDiagnostico.test.tsx`
+**Interfaces:** Consumes: `medirMaos`, `MedidaMaos`, `CONFIG_GESTOS`, `criarInterpretador('mao')` (`src/core/gestos.ts`, Fases 8.2 e 19.1); `reduzir`, `Contexto` (`src/core/partida.ts`); `useJogo` (Fase 19.3). Produces:
+- `MedidaMaos` ganha `deslocD` e `deslocE`: deslocamento lateral de cada punho a partir do meio do corpo, em larguras de ombro, do ponto de vista do jogador; positivo é a própria direita.
+- `CONFIG_GESTOS` ganha `duasMaosLadoL: 0.5`, `centroArrasteL: 0.5`, `arrasteMinL: 1` e `arrasteMaxMs: 800`.
+- `Contexto` ganha `ignorarAusencia?: boolean`.
+
+Causa (investigação do bug "no modo Mão a barra não diminui"):
+- Com Enter duas vezes (entrada alternativa, que ignora a presença), a barra andou normalmente no notebook da usuária. Com Iniciar e calibração, ela parava.
+- A simulação com poses sintéticas mostrou o mecanismo. Com a pessoa detectada, a barra anda direito, inclusive com as mãos levantadas. Ela só para quando a detecção perde a pessoa, e então a pausa por ausência (AC-5.3) segura o tempo: perdendo 70% dos quadros, a barra contou 1,8 s em 6 s reais.
+- A v6.0.0 resolve pela regra: nos modos Mão e Cabeça, a ausência não pausa mais.
+- Os gestos novos atendem ao pedido de escolher também com as duas mãos para um lado ou arrastando.
+
+Decisões técnicas (inline):
+- **Distâncias em larguras de ombro (L):** `L = |x(ombro E) − x(ombro D)|`. O deslocamento de um punho é `(xJogador(punho) − centroTronco) / L`, com `xJogador = 1 − x` (imagem espelhada). Assim as regras valem com o jogador perto ou longe da câmera.
+- **Uma postura com tempo de permanência:** "levantar uma mão" e "duas mãos para um lado" viram uma só *postura de lado*, com o mesmo `permanenciaLadoMs` (~300 ms). O arraste é instantâneo: dispara quando a condição se cumpre dentro da janela de 0,8 s.
+- **Liberação depois de uma escolha (AC-9.22):** a escolha só é liberada quando nenhuma mão está levantada e não há postura "duas mãos para um lado". O arraste guarda, por punho, o último instante em que o punho esteve no centro; esse registro é consumido ao disparar, e por isso um novo arraste precisa voltar ao centro.
+- **Ausência por modo (AC-9.21):** `useJogo` passa `ignorarAusencia: config.modo !== 'corpo'` no `Contexto`. O reducer trata a presença como `null` no card quando a entrada é alternativa ou quando `ignorarAusencia` está ligado. A calibração não muda.
+
+### 20.1 Ausência ignorada nos modos Mão e Cabeça (partida)
+
+- [ ] Em `src/core/partida.test.ts`, acrescentar no fim:
+  ```ts
+  describe('v6.0.0: ausência só pausa no modo Corpo', () => {
+    it('AC-9.21: com ignorarAusencia (Mão/Cabeça), partida calibrada não pausa nem encerra sem ninguém', () => {
+      const c = ctx({ ignorarAusencia: true });
+      const s0 = emCardCalibrado(c);
+      expect(s0.tela).toBe('card');
+      const s = rodar(s0, [tick(6000, ninguem), tick(6000, ninguem)], c);
+      expect(s).toMatchObject({ tela: 'card', ausenteMs: null, restanteMs: TEMPOS.cardMs - 12000 });
+    });
+    it('AC-5.3 (modo Corpo): sem ignorarAusencia, a partida calibrada ainda pausa', () => {
+      const s = rodar(emCardCalibrado(), [tick(4000, ninguem)]);
+      expect(s).toMatchObject({ tela: 'card', ausenteMs: 4000, restanteMs: TEMPOS.cardMs });
+    });
+    it('a calibração continua exigindo a pessoa no centro, mesmo com ignorarAusencia', () => {
+      const c = ctx({ ignorarAusencia: true });
+      expect(rodar(ESTADO_INICIAL, [{ tipo: 'enter' }, tick(5000, ninguem), tick(5000, ninguem)], c).tela).toBe('espera');
+    });
+  });
+  ```
+- [ ] Rodar `npx vitest run src/core/partida.test.ts`. Esperado: FAIL no primeiro teste.
+- [ ] Em `src/core/partida.ts`:
+  - no `Contexto`, acrescentar o campo (com o comentário):
+    ```ts
+    /** v6.0.0 (AC-9.21): nos modos Mão e Cabeça a ausência não pausa nem encerra a partida. */
+    ignorarAusencia?: boolean;
+    ```
+  - no `case 'card'`, trocar
+    `const p = estado.partida.entrada === 'alternativa' ? null : evento.presenca;`
+    por
+    `const p = estado.partida.entrada === 'alternativa' || ctx.ignorarAusencia ? null : evento.presenca;`
+    (o comentário acima passa a ser `// Partida pelo teclado/mouse (AC-1.6) ou nos modos Mão/Cabeça (AC-9.21) não depende de presença.`)
+- [ ] Em `src/app/useJogo.ts`, nas duas linhas que montam o `Contexto` (`useRef<Contexto>({ … })` e `ctx.current = { … }`), acrescentar `ignorarAusencia: config.modo !== 'corpo'`.
+- [ ] Rodar `npx vitest run` e `npx tsc --noEmit`. Esperado: PASS e sem erros.
+- [ ] Commit: `fix(partida): absence never pauses in Mão and Cabeça modes (Phase 20.1: Ausência por modo)`
+
+### 20.2 Gestos novos do modo Mão
+
+- [ ] Em `src/core/gestos-medidas.test.ts`, trocar os dois `expect(medirMaos(p)).toEqual({ … })` por `toMatchObject` com os mesmos objetos, porque `MedidaMaos` ganha campos. Acrescentar:
+  ```ts
+  it('v6.0.0: deslocamento lateral dos punhos em larguras de ombro, do ponto de vista do jogador', () => {
+    const p = base();                       // ombros em x 0,6 (E) e 0,4 (D): L = 0,2, centro do jogador 0,5
+    const m = medirMaos(p);
+    expect(m.deslocD).toBeCloseTo(0.75, 5); // punho D cru em x 0,35 → x do jogador 0,65 → +0,15/0,2
+    expect(m.deslocE).toBeCloseTo(-0.75, 5);
+  });
+  ```
+- [ ] Escrever `src/core/gestos-mao-v6.test.ts`:
+  ```ts
+  import { describe, expect, it } from 'vitest';
+  import { criarInterpretador, type Pose } from './gestos';
+
+  /**
+   * Pose sintética do modo Mão em coordenadas cruas da câmera, com ombros fixos
+   * (L = 0,2; centro do jogador 0,5). `d`/`e` = deslocamento lateral de cada punho em L
+   * (+ = própria direita do jogador); `dAlto`/`eAlto` = punho acima do ombro.
+   */
+  function pose(o: { d?: number; e?: number; dAlto?: boolean; eAlto?: boolean } = {}): Pose {
+    const p = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.8, visibility: 1 }));
+    p[0] = { x: 0.5, y: 0.33, visibility: 1 };
+    p[7] = { x: 0.55, y: 0.3, visibility: 1 };
+    p[8] = { x: 0.45, y: 0.3, visibility: 1 };
+    p[11] = { x: 0.6, y: 0.45, visibility: 1 };
+    p[12] = { x: 0.4, y: 0.45, visibility: 1 };
+    const cruX = (desloc: number) => 1 - (0.5 + desloc * 0.2);
+    p[16] = { x: cruX(o.d ?? 0.75), y: o.dAlto ? 0.3 : 0.6, visibility: 1 };
+    p[15] = { x: cruX(o.e ?? -0.75), y: o.eAlto ? 0.3 : 0.6, visibility: 1 };
+    return p;
+  }
+  const seq = (i: ReturnType<typeof criarInterpretador>, passos: [Pose | null, number][]) => passos.flatMap(([p, t]) => i.ler(p, t).gestos);
+
+  describe('modo Mão v6.0.0: duas mãos para um lado (AC-9.19)', () => {
+    it('as duas mãos além da linha do ombro direito por ~300 ms = "direita"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 1.0, e: 0.6 }), 0], [pose({ d: 1.0, e: 0.6 }), 200]])).toEqual([]);
+      expect(seq(i, [[pose({ d: 1.0, e: 0.6 }), 300]])).toEqual(['direita']);
+    });
+    it('para o lado esquerdo = "esquerda"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: -0.6, e: -1.0 }), 0], [pose({ d: -0.6, e: -1.0 }), 300]])).toEqual(['esquerda']);
+    });
+    it('uma mão só além do ombro (braços abertos, mãos baixas) não escolhe', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 1.0, e: -1.0 }), 0], [pose({ d: 1.0, e: -1.0 }), 1000]])).toEqual([]);
+      expect(seq(i, [[pose({ d: 1.0, e: 0.2 }), 1100], [pose({ d: 1.0, e: 0.2 }), 2000]])).toEqual([]);
+    });
+  });
+
+  describe('modo Mão v6.0.0: arrastar do centro para o lado (AC-9.20)', () => {
+    it('mão direita do centro para a direita (≥ 1 L em até 0,8 s) = "direita"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 0.1 }), 0], [pose({ d: 0.6 }), 200], [pose({ d: 1.15 }), 400]])).toEqual(['direita']);
+    });
+    it('qualquer mão: a esquerda arrastando para a esquerda = "esquerda"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ e: -0.1 }), 0], [pose({ e: -1.2 }), 500]])).toEqual(['esquerda']);
+    });
+    it('arraste lento demais (> 0,8 s) ou curto demais (< 1 L) não escolhe', () => {
+      const lento = criarInterpretador('mao');
+      expect(seq(lento, [[pose({ d: 0.1 }), 0], [pose({ d: 0.6 }), 500], [pose({ d: 1.2 }), 1000]])).toEqual([]);
+      const curto = criarInterpretador('mao');
+      expect(seq(curto, [[pose({ d: 0.2 }), 0], [pose({ d: 0.9 }), 300]])).toEqual([]);
+    });
+    it('baixar o braço para o lado do corpo (mão já fora do centro) não escolhe', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 0.6 }), 0], [pose({ d: 1.2 }), 300], [pose({ d: 0.75 }), 600]])).toEqual([]);
+    });
+  });
+
+  describe('modo Mão v6.0.0: liberação entre escolhas (AC-9.22) e gestos antigos', () => {
+    it('depois de um arraste, outro arraste só vale partindo de novo do centro', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 0.1 }), 0], [pose({ d: 1.2 }), 300]])).toEqual(['direita']);
+      expect(seq(i, [[pose({ d: 1.3 }), 500], [pose({ d: 1.4 }), 900]])).toEqual([]);
+      expect(seq(i, [[pose({ d: 0.1 }), 1000], [pose({ d: 1.2 }), 1300]])).toEqual(['direita']);
+    });
+    it('depois de "duas mãos para um lado", só escolhe de novo após desfazer a postura', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ d: 1.0, e: 0.6 }), 0], [pose({ d: 1.0, e: 0.6 }), 300]])).toEqual(['direita']);
+      expect(seq(i, [[pose({ d: 1.0, e: 0.6 }), 400], [pose({ d: 1.0, e: 0.6 }), 1500]])).toEqual([]);
+      expect(seq(i, [[pose(), 1600], [pose({ d: 1.0, e: 0.6 }), 1700], [pose({ d: 1.0, e: 0.6 }), 2000]])).toEqual(['direita']);
+    });
+    it('AC-9.7 continua: mão direita levantada por ~300 ms = "direita"; duas levantadas = "maosParaCima"', () => {
+      const i = criarInterpretador('mao');
+      expect(seq(i, [[pose({ dAlto: true }), 0], [pose({ dAlto: true }), 300]])).toEqual(['direita']);
+      const j = criarInterpretador('mao');
+      expect(seq(j, [[pose({ dAlto: true, eAlto: true }), 0], [pose({ dAlto: true, eAlto: true }), 500]])).toEqual(['maosParaCima']);
+    });
+  });
+  ```
+  (A pose padrão deixa os punhos a ±0,75 L, abaixo dos ombros, como os braços soltos ao lado do corpo: não é centro e não é postura de lado.)
+- [ ] Rodar `npx vitest run src/core/gestos-mao-v6.test.ts src/core/gestos-medidas.test.ts`. Esperado: FAIL.
+- [ ] Em `src/core/gestos.ts`:
+  - acrescentar em `CONFIG_GESTOS`:
+    ```ts
+    /** v6.0.0, modo Mão: distâncias em larguras de ombro (L) a partir do meio do corpo. */
+    duasMaosLadoL: 0.5,
+    centroArrasteL: 0.5,
+    arrasteMinL: 1,
+    arrasteMaxMs: 800,
+    ```
+  - trocar `MedidaMaos` e `medirMaos` por:
+    ```ts
+    export interface MedidaMaos {
+      direita: boolean;
+      esquerda: boolean;
+      /** Deslocamento lateral do punho a partir do meio do corpo, em larguras de ombro; + = própria direita do jogador. */
+      deslocD: number;
+      deslocE: number;
+    }
+
+    /** Medidas das mãos do modo Mão (AC-9.7, AC-9.19, AC-9.20). Lados anatômicos do jogador. */
+    export function medirMaos(pose: Pose, cfg: Config = CONFIG_GESTOS): MedidaMaos {
+      const acima = (punho: number, ombro: number) => pose[punho]!.y < pose[ombro]!.y - cfg.margemMaoOmbro;
+      const { cx, largura } = medir(pose);
+      const desloc = (punho: number) => (1 - pose[punho]!.x - cx) / Math.max(largura, 1e-6);
+      return { direita: acima(PUNHO_D, OMBRO_D), esquerda: acima(PUNHO_E, OMBRO_E), deslocD: desloc(PUNHO_D), deslocE: desloc(PUNHO_E) };
+    }
+    ```
+  - acrescentar antes de `interpretadorMao`:
+    ```ts
+    type Lado = 'direita' | 'esquerda';
+
+    /** Postura que escolhe um lado: uma mão levantada (AC-9.7) ou as duas mãos baixas além da linha de um ombro (AC-9.19). */
+    function posturaLado(m: MedidaMaos, cfg: Config): Lado | null {
+      if (m.direita !== m.esquerda) return m.direita ? 'direita' : 'esquerda';
+      if (m.direita) return null; // as duas levantadas: "saiba mais"
+      if (m.deslocD > cfg.duasMaosLadoL && m.deslocE > cfg.duasMaosLadoL) return 'direita';
+      if (m.deslocD < -cfg.duasMaosLadoL && m.deslocE < -cfg.duasMaosLadoL) return 'esquerda';
+      return null;
+    }
+
+    /** Arraste de uma mão do centro do peito para um lado (AC-9.20). Guarda, por punho, o último instante no centro. */
+    function criarArraste(cfg: Config) {
+      const centro: Record<'d' | 'e', { t: number; desloc: number } | null> = { d: null, e: null };
+      return {
+        zerar() { centro.d = null; centro.e = null; },
+        ler(m: MedidaMaos, tMs: number): Lado | null {
+          let saida: Lado | null = null;
+          for (const [k, desloc] of [['d', m.deslocD], ['e', m.deslocE]] as const) {
+            if (Math.abs(desloc) < cfg.centroArrasteL) { centro[k] = { t: tMs, desloc }; continue; }
+            const c = centro[k];
+            const andou = desloc - (c?.desloc ?? 0);
+            if (c && tMs - c.t <= cfg.arrasteMaxMs && Math.abs(andou) >= cfg.arrasteMinL && Math.sign(andou) === Math.sign(desloc)) {
+              saida = desloc > 0 ? 'direita' : 'esquerda';
+              centro[k] = null; // um novo arraste precisa voltar ao centro (AC-9.22)
+            }
+          }
+          return saida;
+        },
+      };
+    }
+    ```
+  - substituir `interpretadorMao` por:
+    ```ts
+    function interpretadorMao(cfg: Config): Interpretador {
+      let lado: { gesto: Lado; desde: number } | null = null;
+      let travadoLado = false;
+      const ambas = criarGatilho(cfg.permanenciaMaosMs);
+      const arraste = criarArraste(cfg);
+      return {
+        calibrar() {},
+        ler(pose, tMs) {
+          if (!pose) { lado = null; ambas.zerar(); arraste.zerar(); return AUSENTE; }
+          const gestos: Gesto[] = [];
+          const { cx } = medir(pose);
+          const m = medirMaos(pose, cfg);
+
+          if (ambas.ler(m.direita && m.esquerda, tMs)) {
+            gestos.push('maosParaCima');
+            travadoLado = true; // baixar uma mão por vez depois do "saiba mais" não escolhe
+          }
+          const postura = posturaLado(m, cfg);
+          const arrastou = arraste.ler(m, tMs);
+
+          if (travadoLado) {
+            // Libera só quando as mãos estão baixas e não há "duas mãos para um lado" (AC-9.22).
+            if (!m.direita && !m.esquerda && !postura) travadoLado = false;
+            lado = null;
+          } else if (arrastou) {
+            gestos.push(arrastou);
+            travadoLado = true;
+            lado = null;
+          } else if (!postura) {
+            lado = null;
+          } else if (lado?.gesto !== postura) {
+            lado = { gesto: postura, desde: tMs };
+          } else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
+            gestos.push(postura);
+            travadoLado = true;
+            lado = null;
+          }
+          return { presenca: presenca(cx, cfg), inclinacao: 0, gestos };
+        },
+      };
+    }
+    ```
+- [ ] Rodar `npx vitest run src/core`. Esperado: PASS, com todos os testes antigos de gestos inalterados (`gestos.test.ts`, `gestos-modos.test.ts`). Se algum teste antigo do modo Mão falhar por causa de um quadro a mais na liberação, fazer a liberação ocorrer no mesmo quadro (verificar a liberação antes de avaliar a postura) em vez de mudar o teste.
+- [ ] Em `src/app/PainelDiagnostico.tsx`, logo depois da linha do punho E, acrescentar:
+  ```tsx
+  <p>{a?.medidas.maos ? `mãos (L): D ${a.medidas.maos.deslocD.toFixed(2)} · E ${a.medidas.maos.deslocE.toFixed(2)}` : 'mãos (L): —'}</p>
+  ```
+  e, em `src/app/PainelDiagnostico.test.tsx`, trocar `maos: { direita: true, esquerda: false }` por `maos: { direita: true, esquerda: false, deslocD: 0.62, deslocE: -0.58 }` e acrescentar a asserção `expect(painel).toHaveTextContent('mãos (L): D 0.62 · E -0.58');`.
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS (E2E: 30).
+- [ ] Commit: `feat(gestos): two-hands-to-a-side and drag gestures in Mão mode (Phase 20.2: Gestos novos do modo Mão)`
+
+---
+
+## Phase 21 (added v6.0.0): Verificação dos gestos novos no hardware
+
+**Implements:** FR-9 | **Satisfies:** AC-9.19–AC-9.22 (hardware)
+
+- [ ] Com `?diagnostico`, no modo Mão, sentado e em pé:
+  - fazer cada gesto 5 vezes para cada lado: levantar a mão, as duas mãos para um lado e arrastar do centro;
+  - anotar quantas escolhas certas, quantas falsas e quantas não registradas;
+  - baixar o registro depois de cada série.
+- [ ] Conferir que a barra de tempo corre o card inteiro mesmo quando a câmera perde a pessoa, nos modos Mão e Cabeça (AC-9.21).
+- [ ] Se necessário, ajustar `duasMaosLadoL`, `centroArrasteL`, `arrasteMinL` e `arrasteMaxMs` com base nos valores "mãos (L)" do registro.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -4775,3 +5060,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 5.0.0 | 17 | Adicionada: verificação no hardware |
 | 5.1.0 | 18 | Adicionada: botão ⚙ no canto superior direito e menu como painel lateral |
 | 5.2.0 | 19 | Adicionada: modo de diagnóstico (?diagnostico) com painel e registro baixável |
+| 6.0.0 | 8.2, 3 | Parcialmente invalidadas: o modo Mão ganha gestos e a ausência deixa de pausar nos modos Mão/Cabeça; reescritos na Fase 20 |
+| 6.0.0 | 20 | Adicionada: gestos novos do modo Mão e ausência só no modo Corpo |
+| 6.0.0 | 21 | Adicionada: verificação no hardware |
