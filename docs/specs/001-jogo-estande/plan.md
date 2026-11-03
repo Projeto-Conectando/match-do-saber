@@ -5183,6 +5183,48 @@ A foto é um data URL (`image/jpeg`) guardado só em estado React. Ela é apagad
 
 ---
 
+## Phase 26 (added v7.1.0): Mensagem do resumo por faixa de acertos
+
+**Implements:** FR-5 (faixas), FR-4 | **Satisfies:** AC-5.7, AC-13.2 (layout com a mensagem)
+**Files:** `src/core/partida.ts`, `src/core/partida.test.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.module.css`, `tests/e2e/partida.spec.ts`, `tests/e2e/foto.spec.ts`
+**Interfaces:** Consumes: `TelaResumo` (Fases 5 e 24). Produces: `mensagemResumo(pontos: number, total: number): string` (`src/core/partida.ts`).
+
+A regra fica no núcleo, como função pura, e a tela só mostra o texto. A faixa sai da proporção `pontos / total`, então partidas com menos de 10 cards usam as mesmas faixas.
+
+- [ ] Em `src/core/partida.test.ts`, acrescentar (`it.each`):
+  - AC-5.7, partida de 10: 0, 1, 4 → "Cuidado! Você precisa verificar melhor as manchetes."; 5, 7 → "Você consegue se proteger, mas ainda pode melhorar."; 8, 9 → "Parabéns! Você checa muito bem as notícias."; 10 → "Imune a fake news!".
+  - Proporção: 3 de 6 → "Você consegue se proteger, mas ainda pode melhorar."; 5 de 6 → "Parabéns! Você checa muito bem as notícias."; 6 de 6 → "Imune a fake news!"; 2 de 6 → "Cuidado! Você precisa verificar melhor as manchetes."; 4 de 5 → "Parabéns! Você checa muito bem as notícias."
+- [ ] Em `src/app/Telas.test.tsx`:
+  - o teste AC-5.1 (7 de 10) passa a esperar também "Você consegue se proteger, mas ainda pode melhorar.";
+  - novo teste AC-5.7 com foto: `TelaResumo pontos={10} total={10} … foto="data:image/jpeg;base64,AAA"` mostra "Imune a fake news!".
+- [ ] Rodar `npx vitest run src/core/partida.test.ts src/app/Telas.test.tsx`. Esperado: FAIL.
+- [ ] Implementar em `src/core/partida.ts`:
+  ```ts
+  /** Mensagem do resumo pela proporção de acertos (AC-5.7). */
+  export function mensagemResumo(pontos: number, total: number): string {
+    const p = total > 0 ? pontos / total : 0;
+    if (p >= 1) return 'Imune a fake news!';
+    if (p >= 0.8) return 'Parabéns! Você checa muito bem as notícias.';
+    if (p >= 0.5) return 'Você consegue se proteger, mas ainda pode melhorar.';
+    return 'Cuidado! Você precisa verificar melhor as manchetes.';
+  }
+  ```
+- [ ] Em `src/app/Telas.tsx`, em `TelaResumo`, logo depois do `<p className={s.placar}>`, acrescentar `<p className={s.mensagemResumo}>{mensagemResumo(pontos, total)}</p>`; em `src/app/App.module.css`, `.mensagemResumo { margin: 0; font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 700; max-width: 40rem; }`.
+- [ ] Em `tests/e2e/partida.spec.ts`, no teste da partida completa, depois de `/^\d+ de 10$/`, esperar uma das quatro mensagens (`/^(Cuidado!|Você consegue|Parabéns!|Imune a fake news!)/`).
+- [ ] Em `tests/e2e/foto.spec.ts`, acrescentar a mensagem às caixas medidas (dentro de 1366×768, sem sobrepor o polaroid, o placar, as técnicas nem a prévia da câmera).
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS. Se, com a foto, as técnicas ou a mensagem encostarem na prévia da câmera, ajustar só o CSS do resumo com foto (por exemplo o `gap` de `.resumoTexto` ou o tamanho de `.placar` dentro dele), nunca os textos nem os testes.
+- [ ] Commit: `feat(resumo): message by score band (Phase 26: Mensagem do resumo)`
+
+---
+
+## Phase 27 (added v7.1.0): Verificação da mensagem no hardware
+
+**Implements:** FR-5 | **Satisfies:** AC-5.7 (hardware)
+
+- [ ] Na TV do estande, com e sem foto, conferir que a mensagem é legível a ~2 m e não cobre nada do resumo.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5206,7 +5248,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-2 | 4, 5 |
   | FR-3 | 5 |
   | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15, 16 |
-  | FR-5 | 3 |
+  | FR-5 | 3, 26 (v7.1.0) |
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
   | FR-8 | 6 |
@@ -5247,3 +5289,5 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 7.0.0 | 10 | Parcialmente invalidada: o menu passa de três para quatro itens; reescrito na Fase 24.1 |
 | 7.0.0 | 24 | Adicionada: foto polaroid no resumo e item "Foto no resumo" |
 | 7.0.0 | 25 | Adicionada: verificação no hardware |
+| 7.1.0 | 26 | Adicionada: mensagem do resumo por faixa de acertos |
+| 7.1.0 | 27 | Adicionada: verificação no hardware |
