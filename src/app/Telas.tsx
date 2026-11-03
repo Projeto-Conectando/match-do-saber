@@ -3,7 +3,7 @@ import {
   CONFIG_PADRAO, DICA_GESTOS, DICA_SAIBA_MAIS, ITENS_CONFIG, OPCOES, ROTULO_ITEM, resumoConfiguracoes, rotuloValor,
   type Configuracoes, type ModoJogo,
 } from '../core/modos';
-import type { Resultado } from '../core/partida';
+import { mensagemResumo, type Resultado } from '../core/partida';
 import { TECNICA_ROTULO, type Noticia, type Tecnica } from '../core/types';
 import type { StatusCamera } from './useJogo';
 import s from './App.module.css';
@@ -198,6 +198,7 @@ export function TelaResumo({ pontos, total, tecnicas, foto }: { pontos: number; 
     <>
       <h1>Fim de jogo!</h1>
       <p className={s.placar}>{`${pontos} de ${total}`}</p>
+      <p className={s.mensagemResumo}>{mensagemResumo(pontos, total)}</p>
       <h2>Técnicas que você praticou</h2>
       <ul className={s.tecnicas}>{tecnicas.map((t) => <li key={t}>{TECNICA_ROTULO[t]}</li>)}</ul>
     </>

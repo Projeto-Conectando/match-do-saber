@@ -134,3 +134,12 @@ export function pontos(p: Partida): number {
 export function tecnicasDaPartida(p: Partida): Tecnica[] {
   return [...new Set(p.cards.slice(0, p.resultados.length).map((c) => c.tecnica))];
 }
+
+/** Mensagem do resumo pela proporção de acertos (AC-5.7). */
+export function mensagemResumo(pontos: number, total: number): string {
+  const p = total > 0 ? pontos / total : 0;
+  if (p >= 1) return 'Imune a fake news!';
+  if (p >= 0.8) return 'Parabéns! Você checa muito bem as notícias.';
+  if (p >= 0.5) return 'Você consegue se proteger, mas ainda pode melhorar.';
+  return 'Cuidado! Você precisa verificar melhor as manchetes.';
+}

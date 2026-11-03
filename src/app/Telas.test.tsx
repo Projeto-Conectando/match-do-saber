@@ -70,6 +70,11 @@ describe('telas', () => {
     expect(screen.getByText('7 de 10')).toBeInTheDocument();
     expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
     expect(screen.getByText('Conferir a data')).toBeInTheDocument();
+    expect(screen.getByText('Você consegue se proteger, mas ainda pode melhorar.')).toBeInTheDocument();
+  });
+  it('AC-5.7: resumo com foto mostra a mensagem da faixa', () => {
+    render(<TelaResumo pontos={10} total={10} tecnicas={['fonte']} foto="data:image/jpeg;base64,AAA" />);
+    expect(screen.getByText('Imune a fake news!')).toBeInTheDocument();
   });
   it('AC-13.2: resumo com foto mostra o polaroid com a faixa "Match do Saber · N de M"', () => {
     const foto = 'data:image/jpeg;base64,AAA';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ESTADO_INICIAL, TEMPOS, pontos, reduzir, tecnicasDaPartida,
+  ESTADO_INICIAL, TEMPOS, mensagemResumo, pontos, reduzir, tecnicasDaPartida,
   type Contexto, type Estado, type Evento, type Presenca,
 } from './partida';
 import type { Noticia, Tecnica, Veredito } from './types';
@@ -198,6 +198,21 @@ describe('resumo', () => {
     if (s.tela !== 'card') throw new Error();
     expect(s.partida.resultados).toEqual([]);
     expect(s.partida.entrada).toBe('alternativa');
+  });
+  const CUIDADO = 'Cuidado! Você precisa verificar melhor as manchetes.';
+  const MELHORAR = 'Você consegue se proteger, mas ainda pode melhorar.';
+  const PARABENS = 'Parabéns! Você checa muito bem as notícias.';
+  const IMUNE = 'Imune a fake news!';
+  it.each([
+    [0, 10, CUIDADO], [1, 10, CUIDADO], [4, 10, CUIDADO], [5, 10, MELHORAR], [7, 10, MELHORAR],
+    [8, 10, PARABENS], [9, 10, PARABENS], [10, 10, IMUNE],
+  ])('AC-5.7: %i de %i → "%s"', (p, total, msg) => {
+    expect(mensagemResumo(p, total)).toBe(msg);
+  });
+  it.each([
+    [3, 6, MELHORAR], [5, 6, PARABENS], [6, 6, IMUNE], [2, 6, CUIDADO], [4, 5, PARABENS],
+  ])('AC-5.7: faixa pela proporção, %i de %i → "%s"', (p, total, msg) => {
+    expect(mensagemResumo(p, total)).toBe(msg);
   });
 });
 
