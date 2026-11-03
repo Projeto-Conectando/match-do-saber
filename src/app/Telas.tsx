@@ -4,7 +4,7 @@ import {
   type Configuracoes, type ModoJogo,
 } from '../core/modos';
 import { mensagemResumo, type Resultado } from '../core/partida';
-import { TECNICA_ROTULO, type Noticia, type Tecnica } from '../core/types';
+import { TECNICA_ROTULO, type Noticia } from '../core/types';
 import type { StatusCamera } from './useJogo';
 import s from './App.module.css';
 
@@ -193,14 +193,12 @@ export function TelaFeedback({ noticia, resultado, pontos }: { noticia: Noticia;
 }
 
 /** `foto`: quadro da câmera do meio da partida (FR-13); sem ela, o resumo fica como em AC-5.1 (AC-13.3). */
-export function TelaResumo({ pontos, total, tecnicas, foto }: { pontos: number; total: number; tecnicas: Tecnica[]; foto?: string | null }) {
+export function TelaResumo({ pontos, total, foto }: { pontos: number; total: number; foto?: string | null }) {
   const texto = (
     <>
       <h1>Fim de jogo!</h1>
       <p className={s.placar}>{`${pontos} de ${total}`}</p>
       <p className={s.mensagemResumo}>{mensagemResumo(pontos, total)}</p>
-      <h2>Técnicas que você praticou</h2>
-      <ul className={s.tecnicas}>{tecnicas.map((t) => <li key={t}>{TECNICA_ROTULO[t]}</li>)}</ul>
     </>
   );
   return (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseCatalogo } from '../core/catalogo';
 import { criarRegistro } from '../core/diagnostico';
-import { TEMPOS, pontos, tecnicasDaPartida, type Estado } from '../core/partida';
+import { TEMPOS, pontos, type Estado } from '../core/partida';
 import type { Noticia } from '../core/types';
 import { baixarJson } from './baixar';
 import { CameraPreview } from './CameraPreview';
@@ -104,7 +104,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       break;
     }
     case 'resumo':
-      tela = <TelaResumo pontos={pontos(estado.partida)} total={estado.partida.cards.length} tecnicas={tecnicasDaPartida(estado.partida)} foto={foto} />;
+      tela = <TelaResumo pontos={pontos(estado.partida)} total={estado.partida.cards.length} foto={foto} />;
       break;
   }
 

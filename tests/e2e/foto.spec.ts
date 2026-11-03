@@ -68,12 +68,12 @@ test('AC-13.1/AC-13.2/AC-13.4/AC-13.5: com câmera, polaroid do card do meio no 
   expect(await foto.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   await expect(page.getByText(/^Match do Saber · \d+ de 10$/)).toBeVisible();
 
-  // AC-13.2/AC-5.7: polaroid, placar, mensagem e técnicas cabem em 1366×768 sem se sobrepor.
+  // AC-13.2/AC-5.7: polaroid, placar e mensagem cabem em 1366×768 sem se sobrepor; sem a lista de técnicas (v8.0.0).
+  await expect(page.getByText('Técnicas que você praticou')).toHaveCount(0);
   const caixas = {
     polaroid: (await page.locator('figure').boundingBox())!,
     placar: (await page.getByText(/^\d+ de 10$/).boundingBox())!,
     mensagem: (await page.getByText(/^(Cuidado!|Você consegue|Parabéns!|Imune a fake news!)/).boundingBox())!,
-    tecnicas: (await page.locator('main ul').boundingBox())!,
   };
   console.log(`caixas: ${JSON.stringify(caixas)}`);
   for (const [nome, b] of Object.entries(caixas)) {
