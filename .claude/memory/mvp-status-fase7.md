@@ -1,6 +1,6 @@
 ---
 name: mvp-status-fase7
-description: MVP 001-jogo-estande (spec v7.0.0, com foto polaroid no resumo, gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
+description: MVP 001-jogo-estande (spec v7.1.0, com mensagem por faixa no resumo, foto polaroid no resumo, gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
 metadata:
   type: project
 ---
@@ -22,6 +22,8 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v6.0.0, mergeado em 2026-10-29) Bug da barra parada no modo Mão RESOLVIDO: causa era a pausa por ausência quando a detecção perdia a pessoa ao levantar a mão (confirmado: Enter duas vezes funcionava). Agora Mão/Cabeça ignoram ausência. Modo Mão ganhou "duas mãos para um lado" e "arrastar do centro". Fase 21 pendente: testar os gestos no notebook com `?diagnostico` (inclusive "V" e braços abertos) e ajustar `duasMaosLadoL`, `centroArrasteL`, `arrasteMinL`, `arrasteMaxMs`.
 - (v6.1.0, mergeado em 2026-10-29) A dica do modo Mão (AC-9.14) agora cita os três jeitos de escolher. Fase 23 pendente: conferir na TV a 1,5–2 m que a dica é legível e não cobre o card nem a barra.
 - (v7.0.0, mergeado em 2026-11-03) Resumo mostra polaroid com quadro da câmera do card do meio (⌈M/2⌉), só em memória (apagado ao fechar o resumo); item "Foto no resumo" no menu (ligado por padrão). A exceção à regra "não guardar imagem da câmera" foi decidida sem emendar o Princípio 3 porque nada é salvo/enviado; baixar/QR ficou fora (exigiria emenda). Fase 25 pendente: enquadramento no recorte quadrado, legibilidade na TV, sem travada no instante da foto.
+- (v7.1.0, mergeado em 2026-11-03) Resumo mostra mensagem por proporção de acertos (AC-5.7). Com foto, só ~10 px separam as técnicas da prévia da câmera em 1366×768 — conferir na TV (Fase 27).
+- (2026-11-03, ABERTO) Usuária relatou a barra de tempo parada no modo Mão: print com barra inteira vermelha em "5 s" e sem prévia da câmera. Não reproduzido (sem câmera e com câmera simulada a barra desce). Suspeita não confirmada: carga do modelo de pose travando a página. Pedido print com `?diagnostico` no momento do travamento.
 - Planilha: aba `noticias` criada pela `configurarPlanilha` (2026-10-29); faltam a conta de serviço Google (Parte 2) e o GitHub/secrets/token (Parte 3) do guia.
 - O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
 
