@@ -192,13 +192,27 @@ export function TelaFeedback({ noticia, resultado, pontos }: { noticia: Noticia;
   );
 }
 
-export function TelaResumo({ pontos, total, tecnicas }: { pontos: number; total: number; tecnicas: Tecnica[] }) {
-  return (
-    <main className={s.centro}>
+/** `foto`: quadro da câmera do meio da partida (FR-13); sem ela, o resumo fica como em AC-5.1 (AC-13.3). */
+export function TelaResumo({ pontos, total, tecnicas, foto }: { pontos: number; total: number; tecnicas: Tecnica[]; foto?: string | null }) {
+  const texto = (
+    <>
       <h1>Fim de jogo!</h1>
       <p className={s.placar}>{`${pontos} de ${total}`}</p>
       <h2>Técnicas que você praticou</h2>
       <ul className={s.tecnicas}>{tecnicas.map((t) => <li key={t}>{TECNICA_ROTULO[t]}</li>)}</ul>
+    </>
+  );
+  return (
+    <main className={s.centro}>
+      {foto ? (
+        <div className={s.resumoFoto}>
+          <figure className={s.polaroid}>
+            <img src={foto} alt="Sua foto na partida" />
+            <figcaption>{`Match do Saber · ${pontos} de ${total}`}</figcaption>
+          </figure>
+          <div className={s.resumoTexto}>{texto}</div>
+        </div>
+      ) : texto}
       <p className={s.dica}>Operador: Enter para a próxima partida</p>
     </main>
   );

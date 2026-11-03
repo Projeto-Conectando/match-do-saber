@@ -71,6 +71,24 @@ describe('telas', () => {
     expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
     expect(screen.getByText('Conferir a data')).toBeInTheDocument();
   });
+  it('AC-13.2: resumo com foto mostra o polaroid com a faixa "Match do Saber · N de M"', () => {
+    const foto = 'data:image/jpeg;base64,AAA';
+    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    expect(container.querySelector('figure')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Sua foto na partida' })).toHaveAttribute('src', foto);
+    expect(screen.getByText('Match do Saber · 7 de 10')).toBeInTheDocument();
+    expect(screen.getByText('7 de 10')).toBeInTheDocument();
+    expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
+  });
+  it.each([
+    ['sem a prop foto', undefined],
+    ['com foto={null}', null],
+  ])('AC-13.3: resumo %s não tem polaroid', (_, foto) => {
+    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    expect(container.querySelector('figure')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('7 de 10')).toBeInTheDocument();
+  });
 });
 
 describe('modos de jogo (v1.1.0)', () => {
@@ -94,8 +112,8 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
   it('AC-9.2/AC-10.1: espera mostra o resumo, Iniciar e Configurações', () => {
     const iniciar = vi.fn();
     const abrir = vi.fn();
-    render(<TelaEspera semNoticias={false} camera="ativa" config={{ modo: 'mao', tempoCardS: 20, som: false }} onAbrirMenu={abrir} onIniciar={iniciar} />);
-    expect(screen.getByText('Modo: Mão · Tempo por card: 20 s · Som: desligado')).toBeInTheDocument();
+    render(<TelaEspera semNoticias={false} camera="ativa" config={{ modo: 'mao', tempoCardS: 20, som: false, foto: false }} onAbrirMenu={abrir} onIniciar={iniciar} />);
+    expect(screen.getByText('Modo: Mão · Tempo por card: 20 s · Som: desligado · Foto: desligada')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Configurações' })).toHaveTextContent('⚙');
     fireEvent.click(screen.getByRole('button', { name: '▶ Iniciar' }));
     fireEvent.click(screen.getByRole('button', { name: 'Configurações' }));
@@ -106,18 +124,20 @@ describe('v2.0.0: configurações, iniciar e sair', () => {
     render(<TelaEspera semNoticias camera="ativa" />);
     expect(screen.getByRole('button', { name: '▶ Iniciar' })).toBeDisabled();
   });
-  it('AC-9.1: menu mostra os três itens com os valores atuais marcados', () => {
+  it('AC-9.1: menu mostra os quatro itens com os valores atuais marcados', () => {
     const definir = vi.fn();
-    render(<MenuConfiguracoes config={{ modo: 'corpo', tempoCardS: 15, som: true }} itemDestacado={0} onDefinir={definir} onFechar={() => {}} />);
+    render(<MenuConfiguracoes config={{ modo: 'corpo', tempoCardS: 15, som: true, foto: true }} itemDestacado={0} onDefinir={definir} onFechar={() => {}} />);
     expect(screen.getByRole('dialog', { name: 'Configurações' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Modo de jogo' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Tempo por card' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Som' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Foto no resumo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '◉ Corpo' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '◉ 15 s' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '◉ Ligado' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '◉ Ligada' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: '○ 25 s' }));
-    expect(definir).toHaveBeenCalledWith({ modo: 'corpo', tempoCardS: 25, som: true });
+    expect(definir).toHaveBeenCalledWith({ modo: 'corpo', tempoCardS: 25, som: true, foto: true });
     // AC-9.3/AC-9.18: o "✕" no topo do painel fecha
     const fechar = screen.getByRole('button', { name: 'Fechar' });
     expect(fechar).toHaveTextContent('✕');

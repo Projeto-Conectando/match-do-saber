@@ -5,9 +5,11 @@ import { TEMPOS, pontos, tecnicasDaPartida, type Estado } from '../core/partida'
 import type { Noticia } from '../core/types';
 import { baixarJson } from './baixar';
 import { CameraPreview } from './CameraPreview';
+import { capturarQuadro } from './foto';
 import { PainelDiagnostico } from './PainelDiagnostico';
 import { BotaoSair, MenuConfiguracoes, TelaCalibracao, TelaCard, TelaEspera, TelaFeedback, TelaResumo } from './Telas';
 import { useConfiguracoes } from './useConfiguracoes';
+import { useFotoPartida } from './useFotoPartida';
 import { useJogo } from './useJogo';
 import { useSons } from './useSons';
 import s from './App.module.css';
@@ -40,6 +42,9 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
   const { estado, despachar, camera, videoRef, poseRef } = useJogo(noticias, cfg.config, cfg.menuAberto, diagnostico);
   telaRef.current = estado.tela;
   useSons(estado, cfg.config.som);
+  // Foto do resumo (FR-13): só com a câmera ativa; fica só neste estado React.
+  const foto = useFotoPartida(estado, cfg.config.foto, () =>
+    camera === 'ativa' && videoRef.current ? capturarQuadro(videoRef.current) : null);
   const cardRef = useRef<HTMLElement>(null);
   const cardSaindoRef = useRef<HTMLElement>(null); // card que está saindo (AC-2.1/AC-2.2)
 
@@ -99,7 +104,7 @@ function Jogo({ noticias }: { noticias: Noticia[] }) {
       break;
     }
     case 'resumo':
-      tela = <TelaResumo pontos={pontos(estado.partida)} total={estado.partida.cards.length} tecnicas={tecnicasDaPartida(estado.partida)} />;
+      tela = <TelaResumo pontos={pontos(estado.partida)} total={estado.partida.cards.length} tecnicas={tecnicasDaPartida(estado.partida)} foto={foto} />;
       break;
   }
 
