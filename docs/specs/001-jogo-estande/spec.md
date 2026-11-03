@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 8.0.0
+**Version:** 8.1.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-11-03
 **Branch:** `001-jogo-estande`
@@ -26,6 +26,7 @@
 | 7.0.0 | 2026-10-29 | Adicionados Story 13 e FR-13: o resumo mostra um card polaroid com uma foto da câmera tirada no meio da partida, guardada só na memória e apagada quando o resumo fecha. Reescritos a regra "Must not" de FR-2 (a foto do resumo é a única imagem da câmera guardada, só na memória), AC-9.1, AC-9.2, AC-9.4 e FR-9 (novo item "Foto no resumo" nas Configurações, ligado por padrão) |
 | 7.1.0 | 2026-11-03 | Adicionado AC-5.7: o resumo mostra, abaixo do "N de M", uma mensagem conforme a proporção de acertos (de "Cuidado!" a "Imune a fake news!"); FR-5 ganha a regra das faixas |
 | 8.0.0 | 2026-11-03 | O resumo deixa de mostrar a lista "Técnicas que você praticou": reescritos AC-5.1, AC-13.2 e FR-13. A técnica de cada notícia continua no feedback de cada card (AC-4.x) |
+| 8.1.0 | 2026-11-03 | Modo Corpo ganha outro jeito de escolher o lado, além de deslocar o tronco: estender um braço para o lado (AC-2.7, AC-2.8). AC-2.4 passa a exigir também os braços de volta perto do corpo entre duas escolhas; AC-2.9 fixa a dica do modo Corpo; FR-2 ganha o gesto. Causa: no teste da responsável, a pessoa escolhia com os braços e o tronco ficava no centro, então nenhum card era escolhido |
 
 ---
 
@@ -93,9 +94,12 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-2.1** Given um card está na tela When o jogador desloca o tronco para a **própria direita** além do limiar e se mantém por ~300 ms Then o card é registrado como "match" (resposta "verdadeira") e sai pela direita da tela.
 - [ ] **AC-2.2** Given um card está na tela When o jogador desloca o tronco para a **própria esquerda** além do limiar e se mantém por ~300 ms Then o card é registrado como "descarte" (resposta "falsa") e sai pela esquerda da tela.
 - [ ] **AC-2.3** Given um card está na tela When o jogador se move (inclina o tronco, mexe os braços ou a cabeça) sem completar um gesto Then o card fica parado, sem inclinar nem tremer, e nenhuma escolha é registrada; ele só se move ao sair pela direita ou pela esquerda depois de uma escolha (AC-2.1, AC-2.2).
-- [ ] **AC-2.4** Given o jogador acabou de fazer uma escolha When o próximo card aparece e o jogador ainda está deslocado para um lado Then nenhuma nova escolha é aceita até ele voltar à área central.
+- [ ] **AC-2.4** Given o jogador acabou de fazer uma escolha When o próximo card aparece e o jogador ainda está deslocado para um lado ou com o braço estendido para um lado Then nenhuma nova escolha é aceita até ele voltar à área central com os dois punhos perto do corpo (a menos de 0,9 largura de ombro do meio do corpo).
 - [ ] **AC-2.5** Given um card está na tela When o operador pressiona → ou ← (ou arrasta o card com mouse/toque para a direita ou esquerda) Then o resultado é o mesmo de AC-2.1 ou AC-2.2, respectivamente.
 - [ ] **AC-2.6** Given a câmera está ativa durante a partida When o jogador olha para a tela Then ele vê uma prévia pequena e espelhada de si mesmo com o esqueleto detectado desenhado por cima.
+- [ ] **AC-2.7** Given o modo Corpo e um card na tela When o jogador estende um braço (qualquer um, em qualquer altura) para o **próprio lado direito** até o punho passar de 1,2 largura de ombro do meio do corpo e segura por ~300 ms Then o card é registrado como "match" e sai pela direita; para o lado esquerdo, como "descarte" e sai pela esquerda. O tronco pode ficar no centro.
+- [ ] **AC-2.8** Given o modo Corpo e um card na tela When os dois braços estão estendidos para lados opostos ao mesmo tempo, ou o tronco vai para um lado e o braço para o outro Then nenhuma escolha é registrada; com os dois punhos acima do nariz vale o "saiba mais" (AC-3.1), não uma escolha.
+- [ ] **AC-2.9** Given o modo Corpo When a tela de calibração aparece Then a instrução mostra "Corpo ou braço para a direita: é verdade · Para a esquerda: é falsa · Duas mãos para cima: saiba mais".
 
 ### Story 3: Ver "saiba mais" antes de decidir
 
@@ -297,9 +301,10 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 
 **Must:**
 - Reconhecer três gestos: tronco deslocado para a própria direita (match), para a própria esquerda (descarte) e dois punhos acima do nariz (saiba mais), com os tempos de permanência de AC-2.1, AC-2.2 e AC-3.1.
+- Aceitar também um braço estendido para o lado como match ou descarte (AC-2.7), medido em larguras de ombro a partir do meio do corpo, sem depender da calibração; sinais contrários de tronco e braço, ou de um braço para cada lado, não escolhem (AC-2.8).
 - Tomar "direita" e "esquerda" do ponto de vista do jogador, coerentes com a prévia espelhada e com as setas do teclado.
 - Medir o deslocamento em relação à posição central registrada na calibração da partida.
-- Exigir retorno à área central entre duas escolhas.
+- Exigir retorno à área central, com os dois punhos perto do corpo, entre duas escolhas (AC-2.4).
 - Seguir só a pessoa mais central e maior no quadro.
 - Mostrar a prévia espelhada com esqueleto. O card não acompanha o movimento do jogador (AC-2.3).
 
@@ -548,6 +553,11 @@ Decisões da v7.1.0, confirmadas pela responsável pelo projeto em 2026-11-03:
 Decisões da v8.0.0, confirmadas pela responsável pelo projeto em 2026-11-03:
 - O resumo não mostra mais "Técnicas que você praticou" nem a lista, com ou sem foto. O resumo fica: "Fim de jogo!", "N de M", a mensagem da faixa, o polaroid (se houver) e a dica do operador.
 - O Princípio 2 (ensinar o método) continua atendido: a técnica de checagem aparece no feedback de cada card (AC-4.1 a AC-4.3).
+
+Decisões da v8.1.0, confirmadas pela responsável pelo projeto em 2026-11-03:
+- No modo Corpo, estender um braço para o lado também escolhe, além de deslocar o tronco. O limite é 1,2 largura de ombro do punho ao meio do corpo, com ~300 ms de permanência. A liberação entre escolhas pede os dois punhos a menos de 0,9 largura de ombro.
+- Os limites saíram de uma estimativa a olho nos quadros do vídeo de teste da responsável (braços soltos ~0,8; braço estendido de 1,7 a 2,6 larguras de ombro) e podem ser ajustados com a linha "mãos (L)" do diagnóstico (FR-12).
+- O deslocamento do tronco, o "saiba mais", os modos Mão e Cabeça, o cronômetro e a pausa por ausência não mudam.
 
 ## Out of Scope (Future Considerations)
 
