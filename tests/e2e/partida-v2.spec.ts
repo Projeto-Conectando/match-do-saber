@@ -86,7 +86,7 @@ test('AC-11.4: som desligado não toca nada', async ({ page }) => {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');                       // Som → Desligado
   await page.keyboard.press('Escape');
-  await expect(page.getByText('Modo: Corpo · Tempo por card: 15 s · Som: desligado', { exact: true })).toBeVisible();
+  await expect(page.getByText('Modo: Corpo · Tempo por card: 15 s · Som: desligado · Foto: ligada', { exact: true })).toBeVisible();
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await expect(page.getByText(/^(Acertou!|Errou)$/)).toBeVisible();

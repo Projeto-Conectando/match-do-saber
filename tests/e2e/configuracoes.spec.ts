@@ -15,7 +15,7 @@ test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC
   await abrirSemCamera(page);
   const menu = page.getByRole('dialog', { name: 'Configurações' });
   const resumo = (t: string) => page.getByText(t, { exact: true });
-  await expect(resumo('Modo: Corpo · Tempo por card: 15 s · Som: ligado')).toBeVisible();   // AC-9.4
+  await expect(resumo('Modo: Corpo · Tempo por card: 15 s · Som: ligado · Foto: ligada')).toBeVisible();   // AC-9.4
 
   await page.keyboard.press('m');
   await expect(menu).toBeVisible();                                                       // AC-9.1
@@ -29,7 +29,7 @@ test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC
   await page.keyboard.press('Enter');                                                     // fecha (AC-9.3)
   await expect(menu).toBeHidden();
   await expect(page.locator('article')).toHaveCount(0);                                   // Enter do menu não inicia
-  await expect(resumo('Modo: Mão · Tempo por card: 20 s · Som: ligado')).toBeVisible();   // AC-9.2
+  await expect(resumo('Modo: Mão · Tempo por card: 20 s · Som: ligado · Foto: ligada')).toBeVisible();   // AC-9.2
 
   await page.keyboard.press('m');
   await page.keyboard.press('ArrowDown');
@@ -37,11 +37,11 @@ test('menu pelo teclado: abrir, mudar, fechar, lembrar e bloquear na partida (AC
   await page.keyboard.press('ArrowLeft');                                                 // 15 → 10
   await page.keyboard.press('ArrowLeft');                                                 // 10 fica (AC-9.17)
   await page.keyboard.press('m');                                                         // M também fecha
-  await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado')).toBeVisible();
+  await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado · Foto: ligada')).toBeVisible();
 
   await page.reload();
   await expect(page.getByText(CAMERA_OFF)).toBeVisible();
-  await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado')).toBeVisible();   // AC-9.5
+  await expect(resumo('Modo: Mão · Tempo por card: 10 s · Som: ligado · Foto: ligada')).toBeVisible();   // AC-9.5
 
   await page.keyboard.press('Enter');
   const card = page.locator('article');

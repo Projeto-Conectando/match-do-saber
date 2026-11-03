@@ -19,16 +19,17 @@ export const DICA_SAIBA_MAIS: Record<ModoJogo, string> = {
 
 export const TEMPOS_CARD_S: readonly number[] = [10, 15, 20, 25, 30];
 
-export interface Configuracoes { modo: ModoJogo; tempoCardS: number; som: boolean }
-export const CONFIG_PADRAO: Configuracoes = { modo: MODO_PADRAO, tempoCardS: 15, som: true };
+export interface Configuracoes { modo: ModoJogo; tempoCardS: number; som: boolean; foto: boolean }
+export const CONFIG_PADRAO: Configuracoes = { modo: MODO_PADRAO, tempoCardS: 15, som: true, foto: true };
 
 export type ItemConfig = keyof Configuracoes;
-export const ITENS_CONFIG: readonly ItemConfig[] = ['modo', 'tempoCardS', 'som'];
-export const ROTULO_ITEM: Record<ItemConfig, string> = { modo: 'Modo de jogo', tempoCardS: 'Tempo por card', som: 'Som' };
+export const ITENS_CONFIG: readonly ItemConfig[] = ['modo', 'tempoCardS', 'som', 'foto'];
+export const ROTULO_ITEM: Record<ItemConfig, string> = { modo: 'Modo de jogo', tempoCardS: 'Tempo por card', som: 'Som', foto: 'Foto no resumo' };
 export const OPCOES: { [K in ItemConfig]: readonly Configuracoes[K][] } = {
   modo: MODOS,
   tempoCardS: TEMPOS_CARD_S,
   som: [true, false],
+  foto: [true, false],
 };
 
 export interface Armazenamento {
@@ -40,6 +41,7 @@ const CHAVES: Record<ItemConfig, string> = {
   modo: 'match-do-saber:modo',
   tempoCardS: 'match-do-saber:tempoCard',
   som: 'match-do-saber:som',
+  foto: 'match-do-saber:foto',
 };
 
 function ler(a: Armazenamento | null, chave: string): string | null {
@@ -54,10 +56,12 @@ export function lerConfiguracoes(a: Armazenamento | null): Configuracoes {
   const modo = ler(a, CHAVES.modo);
   const tempo = Number(ler(a, CHAVES.tempoCardS));
   const som = ler(a, CHAVES.som);
+  const foto = ler(a, CHAVES.foto);
   return {
     modo: MODOS.includes(modo as ModoJogo) ? (modo as ModoJogo) : CONFIG_PADRAO.modo,
     tempoCardS: TEMPOS_CARD_S.includes(tempo) ? tempo : CONFIG_PADRAO.tempoCardS,
     som: som === 'ligado' ? true : som === 'desligado' ? false : CONFIG_PADRAO.som,
+    foto: foto === 'ligada' ? true : foto === 'desligada' ? false : CONFIG_PADRAO.foto,
   };
 }
 
@@ -66,6 +70,7 @@ export function salvarConfiguracoes(a: Armazenamento | null, c: Configuracoes): 
     a?.setItem(CHAVES.modo, c.modo);
     a?.setItem(CHAVES.tempoCardS, String(c.tempoCardS));
     a?.setItem(CHAVES.som, c.som ? 'ligado' : 'desligado');
+    a?.setItem(CHAVES.foto, c.foto ? 'ligada' : 'desligada');
   } catch {
     // Armazenamento bloqueado: as escolhas valem até o jogo ser fechado.
   }
@@ -81,9 +86,10 @@ export function mudarValor(c: Configuracoes, item: ItemConfig, passo: -1 | 1): C
 export function rotuloValor(item: ItemConfig, valor: Configuracoes[ItemConfig]): string {
   if (item === 'modo') return MODO_ROTULO[valor as ModoJogo];
   if (item === 'tempoCardS') return `${valor} s`;
+  if (item === 'foto') return valor ? 'Ligada' : 'Desligada';
   return valor ? 'Ligado' : 'Desligado';
 }
 
 export function resumoConfiguracoes(c: Configuracoes): string {
-  return `Modo: ${MODO_ROTULO[c.modo]} · Tempo por card: ${c.tempoCardS} s · Som: ${c.som ? 'ligado' : 'desligado'}`;
+  return `Modo: ${MODO_ROTULO[c.modo]} · Tempo por card: ${c.tempoCardS} s · Som: ${c.som ? 'ligado' : 'desligado'} · Foto: ${c.foto ? 'ligada' : 'desligada'}`;
 }
