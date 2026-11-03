@@ -5225,6 +5225,29 @@ A regra fica no núcleo, como função pura, e a tela só mostra o texto. A faix
 
 ---
 
+## Phase 28 (added v8.0.0): Resumo sem a lista de técnicas
+
+**Implements:** FR-13, FR-4 | **Satisfies:** AC-5.1 (reescrito v8.0.0), AC-13.2 (reescrito v8.0.0)
+**Files:** `src/core/partida.ts`, `src/core/partida.test.ts`, `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.tsx`, `src/app/App.module.css`, `tests/e2e/foto.spec.ts`
+**Interfaces:** Consumes: `TelaResumo` (Fases 5, 24, 26). Produces: `TelaResumo({ pontos, total, foto })`, sem a prop `tecnicas`; `tecnicasDaPartida` é removida.
+
+Tira do resumo o título "Técnicas que você praticou" e a lista. A técnica continua no feedback de cada card (`TelaFeedback`, sem mudança).
+
+- [ ] Em `src/app/Telas.test.tsx`:
+  - o teste AC-5.1 passa a renderizar `<TelaResumo pontos={7} total={10} />` e espera "7 de 10" e "Você consegue se proteger, mas ainda pode melhorar."; espera também que "Técnicas que você praticou", "Checar a fonte" e qualquer `ul` não existam;
+  - nos testes com foto (AC-5.7, AC-13.2, AC-13.3), tirar a prop `tecnicas` e a asserção "Checar a fonte"; no AC-13.2, esperar que "Técnicas que você praticou" não exista.
+- [ ] Em `src/core/partida.test.ts`, no teste AC-5.1 do resumo, tirar a asserção de `tecnicasDaPartida` e o import (o teste continua conferindo os pontos).
+- [ ] Rodar `npx vitest run src/app/Telas.test.tsx`. Esperado: FAIL (o título e a lista ainda aparecem).
+- [ ] Em `src/app/Telas.tsx`, `TelaResumo` perde a prop `tecnicas` e as linhas `<h2>Técnicas que você praticou</h2>` e `<ul className={s.tecnicas}>…</ul>`; tirar o import de `Tecnica` e de `TECNICA_ROTULO` se ficarem sem uso.
+- [ ] Em `src/app/App.tsx`, chamar `<TelaResumo pontos={…} total={…} foto={foto} />` e tirar `tecnicasDaPartida` do import.
+- [ ] Em `src/core/partida.ts`, remover `tecnicasDaPartida` (e o import de `Tecnica`, se ficar sem uso).
+- [ ] Em `src/app/App.module.css`, remover `.tecnicas` e a regra `.resumoTexto .placar` da Fase 26 (sem a lista sobra altura; o placar volta ao tamanho normal ao lado da foto) com o comentário dela.
+- [ ] Em `tests/e2e/foto.spec.ts`, tirar `tecnicas` das caixas medidas e esperar que "Técnicas que você praticou" não apareça no resumo; manter a checagem de polaroid, placar e mensagem dentro de 1366×768, sem sobreposição entre si nem com a prévia da câmera.
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS. Se, com o placar no tamanho normal, algo encostar na prévia da câmera, manter a regra `.resumoTexto .placar` em vez de removê-la.
+- [ ] Commit: `feat(resumo): drop the techniques list from the summary (Phase 28: Resumo sem técnicas)`
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5235,7 +5258,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 1. Aperte ▶ Iniciar (ou Enter) e fique no centro por 2 s. A partida começa. (v3.0.0: a câmera sozinha não inicia nada.)
 2. Desloque o tronco para a sua direita: o card sai pela direita e aparece "Acertou!" ou "Errou", com a explicação e a técnica.
 3. Levante as duas mãos: o "saiba mais" abre e a barra continua diminuindo; levante as mãos de novo (ou ↑) para fechar.
-4. Termine os 10 cards. O resumo "N de 10" fica na tela; Enter inicia a calibração de uma nova partida.
+4. Termine os 10 cards. O resumo "N de 10", com a mensagem da faixa (v7.1.0), fica na tela; Enter inicia a calibração de uma nova partida.
 5. `npm run build && npm run preview`, abrir http://localhost:4173, instalar pelo ícone da barra de endereço, desligar o Wi-Fi e reabrir pelo ícone instalado: o jogo abre e joga com imagens.
 
 ## Verificação contra a spec (self-review)
@@ -5291,3 +5314,5 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 7.0.0 | 25 | Adicionada: verificação no hardware |
 | 7.1.0 | 26 | Adicionada: mensagem do resumo por faixa de acertos |
 | 7.1.0 | 27 | Adicionada: verificação no hardware |
+| 8.0.0 | 5, 24, 26 | Parcialmente invalidadas: a lista de técnicas do resumo sai; reescritas na Fase 28 |
+| 8.0.0 | 28 | Adicionada: resumo sem a lista de técnicas |
