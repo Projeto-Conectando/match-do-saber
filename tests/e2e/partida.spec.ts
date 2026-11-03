@@ -25,6 +25,7 @@ test('partida completa pelo teclado, sem câmera (AC-1.6, AC-2.5, AC-3.4, AC-4.x
   }
 
   await expect(page.getByText(/^\d+ de 10$/)).toBeVisible();
+  await expect(page.getByText(/^(Cuidado!|Você consegue|Parabéns!|Imune a fake news!)/)).toBeVisible(); // AC-5.7
   await page.waitForTimeout(16000);
   await expect(page.getByText(/^\d+ de 10$/)).toBeVisible(); // AC-5.2: não expira
   await page.keyboard.press('Enter');

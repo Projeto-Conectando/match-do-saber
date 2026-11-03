@@ -1,9 +1,9 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 7.0.0
+**Version:** 7.1.0
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-29
+**Last Updated:** 2026-11-03
 **Branch:** `001-jogo-estande`
 **Origem:** [prd.md](prd.md) · ADRs: [frontend-stack](../../adr/001-frontend-stack.md), [motion-input](../../adr/001-motion-input.md), [content-pipeline](../../adr/001-content-pipeline.md)
 
@@ -24,6 +24,7 @@
 | 6.0.0 | 2026-10-29 | Modo Mão ganha mais dois jeitos de escolher o lado, além de levantar a mão: as duas mãos para um lado (AC-9.19) e arrastar uma mão do centro do peito para o lado (AC-9.20). A pausa por ausência (AC-5.3 a AC-5.5) passa a valer só no modo Corpo; nos modos Mão e Cabeça a partida ignora a ausência (AC-9.21). Causa: no modo Mão a câmera perdia a pessoa ao levantar a mão e a barra de tempo parava |
 | 6.1.0 | 2026-10-29 | A dica de gestos do modo Mão (AC-9.14) passa a citar os três jeitos de escolher o lado da v6.0.0: levantar a mão, as duas mãos para o lado e arrastar para o lado. Os gestos não mudam |
 | 7.0.0 | 2026-10-29 | Adicionados Story 13 e FR-13: o resumo mostra um card polaroid com uma foto da câmera tirada no meio da partida, guardada só na memória e apagada quando o resumo fecha. Reescritos a regra "Must not" de FR-2 (a foto do resumo é a única imagem da câmera guardada, só na memória), AC-9.1, AC-9.2, AC-9.4 e FR-9 (novo item "Foto no resumo" nas Configurações, ligado por padrão) |
+| 7.1.0 | 2026-11-03 | Adicionado AC-5.7: o resumo mostra, abaixo do "N de M", uma mensagem conforme a proporção de acertos (de "Cuidado!" a "Imune a fake news!"); FR-5 ganha a regra das faixas |
 
 ---
 
@@ -135,6 +136,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 **Acceptance criteria:**
 
 - [ ] **AC-5.1** Given o último card da partida teve seu feedback concluído When a partida termina Then a tela de resumo mostra os pontos no formato "N de M" e a lista das técnicas de checagem que apareceram na partida, sem repetição.
+- [ ] **AC-5.7** Given a tela de resumo de uma partida com N acertos em M cards When ela aparece Then, logo abaixo do "N de M", aparece uma mensagem conforme a proporção N/M: menos de 0,5 (0 a 4 de 10) — "Cuidado! Você precisa verificar melhor as manchetes."; de 0,5 até menos de 0,8 (5 a 7 de 10) — "Você consegue se proteger, mas ainda pode melhorar."; de 0,8 até menos de 1 (8 e 9 de 10) — "Parabéns! Você checa muito bem as notícias."; todos certos (10 de 10) — "Imune a fake news!". A mensagem aparece com ou sem a foto (AC-13.2), sem cortar nada em 1366×768 (FR-4).
 - [ ] **AC-5.2** Given a tela de resumo está aberta When o tempo passa sem ação do operador Then o resumo continua na tela, sem limite de tempo, mesmo que o jogador saia do quadro.
 - [ ] **AC-5.6** Given a tela de resumo está aberta When o operador pressiona Enter (iniciar nova partida) Then o resumo fecha, nada da partida anterior é guardado e o jogo vai para a calibração da nova partida (ou inicia direto pela entrada alternativa, se a câmera estiver indisponível).
 - [ ] **AC-5.3** Given uma partida no modo Corpo, iniciada pela calibração, está em andamento When ninguém é detectado na câmera Then o cronômetro pausa e aparece a mensagem "Volte para o centro".
@@ -327,6 +329,7 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 
 **Must:**
 - Somar +1 por acerto e 0 por erro ou tempo esgotado.
+- Escolher a mensagem do resumo pela proporção de acertos N/M (AC-5.7): < 0,5, de 0,5 a < 0,8, de 0,8 a < 1, e 1. Assim uma partida com menos de 10 cards usa as mesmas faixas, e "Imune a fake news!" só aparece com todos certos.
 - Sortear os cards conforme AC-6.1 a AC-6.4, sem repetição dentro da partida.
 
 ### FR-6: Planilha de conteúdo
@@ -536,6 +539,10 @@ Decisões da v7.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
 - O resumo ganha um card polaroid com uma foto da câmera tirada no meio da partida (card ⌈M/2⌉), com a faixa "Match do Saber · N de M".
 - A foto fica só na tela: guardada na memória e apagada quando o resumo fecha; nada é salvo, baixado ou enviado. Por isso o Princípio 3 (privacidade por padrão) não precisa de emenda: nenhum dado de jogador é coletado.
 - O operador pode desligar a foto no menu Configurações ("Foto no resumo", ligada por padrão), por exemplo quando uma escola ou um responsável pedir.
+
+Decisões da v7.1.0, confirmadas pela responsável pelo projeto em 2026-11-03:
+- O resumo ganha uma mensagem por faixa de acertos, abaixo do "N de M": 0–4 "Cuidado! Você precisa verificar melhor as manchetes."; 5–7 "Você consegue se proteger, mas ainda pode melhorar."; 8–9 "Parabéns! Você checa muito bem as notícias."; 10 "Imune a fake news!". Os textos evitam marcar gênero.
+- Em partidas com menos de 10 cards, a faixa sai da proporção de acertos (por exemplo, 3 de 6 vale como 5 de 10).
 
 ## Out of Scope (Future Considerations)
 

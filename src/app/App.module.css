@@ -29,10 +29,13 @@
 .explicacao { font-size: clamp(1.25rem, 2.2vw, 1.75rem); max-width: 60rem; }
 .tecnica { background: #3a2470; padding: 0.5rem 1.25rem; border-radius: 2rem; font-size: 1.25rem; }
 .placar { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; margin: 0; }
+.mensagemResumo { margin: 0; font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 700; max-width: 40rem; }
 .tecnicas { list-style: none; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; font-size: 1.25rem; }
 /* Resumo com a foto (FR-13): polaroid à esquerda, pontos e técnicas à direita, tudo dentro de 1366×768 (AC-13.2). */
 .resumoFoto { display: flex; align-items: center; justify-content: center; gap: 3rem; max-width: 100%; }
-.resumoTexto { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.resumoTexto { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+/* Placar menor ao lado da foto: com a mensagem (AC-5.7) a coluna cresce e as técnicas encostariam na prévia da câmera. */
+.resumoTexto .placar { font-size: clamp(3rem, 6vw, 4rem); }
 /* Sem as margens padrão de h1/h2/ul a coluna fica mais baixa e as técnicas passam acima da prévia da câmera. */
 .resumoTexto > * { margin: 0; }
 .polaroid { margin: 0; width: min(20rem, 28vw); background: #fff; color: #1b1035; padding: 0.9rem 0.9rem 0; border-radius: 0.25rem; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.45); transform: rotate(-3deg); }
