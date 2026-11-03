@@ -1,5 +1,5 @@
 import { sortear } from './sorteio';
-import type { Noticia, Tecnica, Veredito } from './types';
+import type { Noticia, Veredito } from './types';
 
 export const TEMPOS = {
   cardMs: 15000,
@@ -129,10 +129,6 @@ export function reduzir(estado: Estado, evento: Evento, ctx: Contexto): Estado {
 
 export function pontos(p: Partida): number {
   return p.resultados.filter((r) => r === 'acerto').length;
-}
-
-export function tecnicasDaPartida(p: Partida): Tecnica[] {
-  return [...new Set(p.cards.slice(0, p.resultados.length).map((c) => c.tecnica))];
 }
 
 /** Mensagem do resumo pela proporção de acertos (AC-5.7). */

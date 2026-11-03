@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ESTADO_INICIAL, TEMPOS, mensagemResumo, pontos, reduzir, tecnicasDaPartida,
+  ESTADO_INICIAL, TEMPOS, mensagemResumo, pontos, reduzir,
   type Contexto, type Estado, type Evento, type Presenca,
 } from './partida';
 import type { Noticia, Tecnica, Veredito } from './types';
@@ -181,11 +181,10 @@ describe('resumo', () => {
     for (let i = 0; i < 3; i++) s = rodar(s, [{ tipo: 'escolha', resposta: 'verdadeira' }, tick(TEMPOS.saidaMs + TEMPOS.feedbackMs)], c);
     return s;
   };
-  it('AC-5.1: resumo com pontos e técnicas sem repetição', () => {
+  it('AC-5.1: resumo com os pontos da partida', () => {
     const s = jogarTudo();
     if (s.tela !== 'resumo') throw new Error(s.tela);
     expect(pontos(s.partida)).toBe(2);
-    expect(tecnicasDaPartida(s.partida).sort()).toEqual(['data', 'fonte']);
   });
   it('AC-5.2: resumo não expira', () => {
     expect(rodar(jogarTudo(), [tick(600000, ninguem)]).tela).toBe('resumo');

@@ -1,7 +1,7 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 7.1.0
+**Version:** 8.0.0
 **Created:** 2026-10-26
 **Last Updated:** 2026-11-03
 **Branch:** `001-jogo-estande`
@@ -25,6 +25,7 @@
 | 6.1.0 | 2026-10-29 | A dica de gestos do modo Mão (AC-9.14) passa a citar os três jeitos de escolher o lado da v6.0.0: levantar a mão, as duas mãos para o lado e arrastar para o lado. Os gestos não mudam |
 | 7.0.0 | 2026-10-29 | Adicionados Story 13 e FR-13: o resumo mostra um card polaroid com uma foto da câmera tirada no meio da partida, guardada só na memória e apagada quando o resumo fecha. Reescritos a regra "Must not" de FR-2 (a foto do resumo é a única imagem da câmera guardada, só na memória), AC-9.1, AC-9.2, AC-9.4 e FR-9 (novo item "Foto no resumo" nas Configurações, ligado por padrão) |
 | 7.1.0 | 2026-11-03 | Adicionado AC-5.7: o resumo mostra, abaixo do "N de M", uma mensagem conforme a proporção de acertos (de "Cuidado!" a "Imune a fake news!"); FR-5 ganha a regra das faixas |
+| 8.0.0 | 2026-11-03 | O resumo deixa de mostrar a lista "Técnicas que você praticou": reescritos AC-5.1, AC-13.2 e FR-13. A técnica de cada notícia continua no feedback de cada card (AC-4.x) |
 
 ---
 
@@ -130,12 +131,12 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 ### Story 5: Ver o resumo e liberar o estande
 
 **As a** jogador que terminou a partida
-**I want** ver como fui e o que aprendi
-**So that** eu saia sabendo o que praticar, e a fila ande
+**I want** ver como fui
+**So that** eu saia sabendo se preciso checar melhor as notícias, e a fila ande
 
 **Acceptance criteria:**
 
-- [ ] **AC-5.1** Given o último card da partida teve seu feedback concluído When a partida termina Then a tela de resumo mostra os pontos no formato "N de M" e a lista das técnicas de checagem que apareceram na partida, sem repetição.
+- [ ] **AC-5.1** Given o último card da partida teve seu feedback concluído When a partida termina Then a tela de resumo mostra os pontos no formato "N de M" e a mensagem da faixa de acertos (AC-5.7). (Até a v7.1.0 mostrava também a lista das técnicas da partida; removida na v8.0.0.)
 - [ ] **AC-5.7** Given a tela de resumo de uma partida com N acertos em M cards When ela aparece Then, logo abaixo do "N de M", aparece uma mensagem conforme a proporção N/M: menos de 0,5 (0 a 4 de 10) — "Cuidado! Você precisa verificar melhor as manchetes."; de 0,5 até menos de 0,8 (5 a 7 de 10) — "Você consegue se proteger, mas ainda pode melhorar."; de 0,8 até menos de 1 (8 e 9 de 10) — "Parabéns! Você checa muito bem as notícias."; todos certos (10 de 10) — "Imune a fake news!". A mensagem aparece com ou sem a foto (AC-13.2), sem cortar nada em 1366×768 (FR-4).
 - [ ] **AC-5.2** Given a tela de resumo está aberta When o tempo passa sem ação do operador Then o resumo continua na tela, sem limite de tempo, mesmo que o jogador saia do quadro.
 - [ ] **AC-5.6** Given a tela de resumo está aberta When o operador pressiona Enter (iniciar nova partida) Then o resumo fecha, nada da partida anterior é guardado e o jogo vai para a calibração da nova partida (ou inicia direto pela entrada alternativa, se a câmera estiver indisponível).
@@ -266,7 +267,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 **Acceptance criteria:**
 
 - [ ] **AC-13.1** Given a câmera está ativa e "Foto no resumo" está Ligada When a escolha (ou o tempo esgotado) do card do meio da partida é registrada (o card ⌈M/2⌉, ou seja, o 5º numa partida de 10) Then o jogo guarda na memória um quadro da câmera daquele instante, sem som, aviso ou pausa.
-- [ ] **AC-13.2** Given uma foto foi guardada na partida When a tela de resumo aparece Then, junto com os pontos e as técnicas (AC-5.1), aparece um card no estilo polaroid com a foto, espelhada como a prévia (AC-2.6) e sem o esqueleto, e a faixa "Match do Saber · N de M"; nada do resumo fica cortado ou coberto em 1366×768 (FR-4).
+- [ ] **AC-13.2** Given uma foto foi guardada na partida When a tela de resumo aparece Then, junto com os pontos e a mensagem (AC-5.1, AC-5.7), aparece um card no estilo polaroid com a foto, espelhada como a prévia (AC-2.6) e sem o esqueleto, e a faixa "Match do Saber · N de M"; nada do resumo fica cortado ou coberto em 1366×768 (FR-4).
 - [ ] **AC-13.3** Given a câmera estava indisponível ou não autorizada no card do meio, "Foto no resumo" está Desligada, ou a captura falhou When a tela de resumo aparece Then ela fica como sem a foto (AC-5.1): sem polaroid e sem espaço vazio no lugar dele.
 - [ ] **AC-13.4** Given há uma foto guardada When o operador inicia uma nova partida pelo resumo (Enter), usa "✕ Sair" ou Esc, ou a partida termina sem resumo Then a foto é apagada da memória e não aparece em nenhuma partida seguinte.
 - [ ] **AC-13.5** Given "Foto no resumo" está Ligada When uma partida acontece, com ou sem `?diagnostico` Then a foto não aparece em nenhuma requisição de rede, no armazenamento do navegador nem no registro do diagnóstico.
@@ -426,7 +427,7 @@ Uma linha por notícia, com as colunas: `id`, `titulo`, `descricao`, `saiba_mais
 
 **Must:**
 - Com a câmera ativa e "Foto no resumo" Ligada, guardar na memória um quadro da câmera no instante em que a escolha (ou o tempo esgotado) do card ⌈M/2⌉ é registrada (AC-13.1).
-- Mostrar no resumo um card polaroid com a foto espelhada, sem esqueleto, e a faixa "Match do Saber · N de M", ao lado dos pontos e das técnicas, sem cortar nada em 1366×768 (AC-13.2).
+- Mostrar no resumo um card polaroid com a foto espelhada, sem esqueleto, e a faixa "Match do Saber · N de M", ao lado dos pontos e da mensagem, sem cortar nada em 1366×768 (AC-13.2).
 - Mostrar o resumo sem polaroid quando não houver foto (AC-13.3).
 - Apagar a foto ao iniciar nova partida, ao sair (Sair ou Esc) e em qualquer fim de partida sem resumo (AC-13.4).
 
@@ -543,6 +544,10 @@ Decisões da v7.0.0, confirmadas pela responsável pelo projeto em 2026-10-29:
 Decisões da v7.1.0, confirmadas pela responsável pelo projeto em 2026-11-03:
 - O resumo ganha uma mensagem por faixa de acertos, abaixo do "N de M": 0–4 "Cuidado! Você precisa verificar melhor as manchetes."; 5–7 "Você consegue se proteger, mas ainda pode melhorar."; 8–9 "Parabéns! Você checa muito bem as notícias."; 10 "Imune a fake news!". Os textos evitam marcar gênero.
 - Em partidas com menos de 10 cards, a faixa sai da proporção de acertos (por exemplo, 3 de 6 vale como 5 de 10).
+
+Decisões da v8.0.0, confirmadas pela responsável pelo projeto em 2026-11-03:
+- O resumo não mostra mais "Técnicas que você praticou" nem a lista, com ou sem foto. O resumo fica: "Fim de jogo!", "N de M", a mensagem da faixa, o polaroid (se houver) e a dica do operador.
+- O Princípio 2 (ensinar o método) continua atendido: a técnica de checagem aparece no feedback de cada card (AC-4.1 a AC-4.3).
 
 ## Out of Scope (Future Considerations)
 

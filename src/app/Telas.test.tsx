@@ -65,31 +65,32 @@ describe('telas', () => {
     render(<TelaFeedback noticia={noticia} resultado="acerto" pontos={4} />);
     expect(screen.getByText('Pontos: 4')).toBeInTheDocument();
   });
-  it('AC-5.1: resumo com "N de M" e técnicas', () => {
-    render(<TelaResumo pontos={7} total={10} tecnicas={['fonte', 'data']} />);
+  it('AC-5.1: resumo com "N de M" e a mensagem, sem a lista de técnicas', () => {
+    const { container } = render(<TelaResumo pontos={7} total={10} />);
     expect(screen.getByText('7 de 10')).toBeInTheDocument();
-    expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
-    expect(screen.getByText('Conferir a data')).toBeInTheDocument();
     expect(screen.getByText('Você consegue se proteger, mas ainda pode melhorar.')).toBeInTheDocument();
+    expect(screen.queryByText('Técnicas que você praticou')).toBeNull();
+    expect(screen.queryByText('Checar a fonte')).toBeNull();
+    expect(container.querySelector('ul')).toBeNull();
   });
   it('AC-5.7: resumo com foto mostra a mensagem da faixa', () => {
-    render(<TelaResumo pontos={10} total={10} tecnicas={['fonte']} foto="data:image/jpeg;base64,AAA" />);
+    render(<TelaResumo pontos={10} total={10} foto="data:image/jpeg;base64,AAA" />);
     expect(screen.getByText('Imune a fake news!')).toBeInTheDocument();
   });
   it('AC-13.2: resumo com foto mostra o polaroid com a faixa "Match do Saber · N de M"', () => {
     const foto = 'data:image/jpeg;base64,AAA';
-    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    const { container } = render(<TelaResumo pontos={7} total={10} foto={foto} />);
     expect(container.querySelector('figure')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Sua foto na partida' })).toHaveAttribute('src', foto);
     expect(screen.getByText('Match do Saber · 7 de 10')).toBeInTheDocument();
     expect(screen.getByText('7 de 10')).toBeInTheDocument();
-    expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
+    expect(screen.queryByText('Técnicas que você praticou')).toBeNull();
   });
   it.each([
     ['sem a prop foto', undefined],
     ['com foto={null}', null],
   ])('AC-13.3: resumo %s não tem polaroid', (_, foto) => {
-    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    const { container } = render(<TelaResumo pontos={7} total={10} foto={foto} />);
     expect(container.querySelector('figure')).toBeNull();
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByText('7 de 10')).toBeInTheDocument();
