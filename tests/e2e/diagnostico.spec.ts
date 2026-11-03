@@ -76,7 +76,9 @@ test('AC-12.2/AC-12.4/AC-12.5: com ?diagnostico, painel no canto sem cobrir o ca
     page.getByRole('button', { name: 'Baixar registro (60 s)' }).click(),
   ]);
   expect(download.suggestedFilename()).toMatch(/^match-do-saber-diagnostico-.*\.json$/);
-  const dados = JSON.parse(await readFile((await download.path())!, 'utf8'));
+  const conteudo = await readFile((await download.path())!, 'utf8');
+  expect(conteudo).not.toContain('data:image');                                          // AC-13.5
+  const dados = JSON.parse(conteudo);
   expect(dados.versao).toBe(1);
   expect(Math.abs(dados.inicioPaginaMs + dados.amostras.at(-1).t - Date.now())).toBeLessThan(60_000);
   expect(dados.amostras.length).toBeGreaterThan(0);

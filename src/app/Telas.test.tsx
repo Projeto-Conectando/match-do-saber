@@ -71,6 +71,24 @@ describe('telas', () => {
     expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
     expect(screen.getByText('Conferir a data')).toBeInTheDocument();
   });
+  it('AC-13.2: resumo com foto mostra o polaroid com a faixa "Match do Saber · N de M"', () => {
+    const foto = 'data:image/jpeg;base64,AAA';
+    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    expect(container.querySelector('figure')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Sua foto na partida' })).toHaveAttribute('src', foto);
+    expect(screen.getByText('Match do Saber · 7 de 10')).toBeInTheDocument();
+    expect(screen.getByText('7 de 10')).toBeInTheDocument();
+    expect(screen.getByText('Checar a fonte')).toBeInTheDocument();
+  });
+  it.each([
+    ['sem a prop foto', undefined],
+    ['com foto={null}', null],
+  ])('AC-13.3: resumo %s não tem polaroid', (_, foto) => {
+    const { container } = render(<TelaResumo pontos={7} total={10} tecnicas={['fonte']} foto={foto} />);
+    expect(container.querySelector('figure')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('7 de 10')).toBeInTheDocument();
+  });
 });
 
 describe('modos de jogo (v1.1.0)', () => {

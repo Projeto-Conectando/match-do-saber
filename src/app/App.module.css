@@ -30,6 +30,14 @@
 .tecnica { background: #3a2470; padding: 0.5rem 1.25rem; border-radius: 2rem; font-size: 1.25rem; }
 .placar { font-size: clamp(3rem, 8vw, 6rem); font-weight: 800; margin: 0; }
 .tecnicas { list-style: none; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; font-size: 1.25rem; }
+/* Resumo com a foto (FR-13): polaroid à esquerda, pontos e técnicas à direita, tudo dentro de 1366×768 (AC-13.2). */
+.resumoFoto { display: flex; align-items: center; justify-content: center; gap: 3rem; max-width: 100%; }
+.resumoTexto { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+/* Sem as margens padrão de h1/h2/ul a coluna fica mais baixa e as técnicas passam acima da prévia da câmera. */
+.resumoTexto > * { margin: 0; }
+.polaroid { margin: 0; width: min(20rem, 28vw); background: #fff; color: #1b1035; padding: 0.9rem 0.9rem 0; border-radius: 0.25rem; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.45); transform: rotate(-3deg); }
+.polaroid img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.polaroid figcaption { padding: 0.9rem 0 1.2rem; font-size: 1.25rem; font-weight: 700; text-align: center; }
 .pontos { position: absolute; left: 1.5rem; bottom: 5rem; margin: 0; font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 800; }
 .faixa { position: absolute; top: 0; left: 0; right: 0; margin: 0; background: #ffd166; color: #1b1035; text-align: center; padding: 0.5rem; font-weight: 700; }
 .preview { position: absolute; right: 1rem; bottom: 5rem; width: 320px; height: 180px; border-radius: 0.75rem; overflow: hidden; border: 3px solid #fff; }
