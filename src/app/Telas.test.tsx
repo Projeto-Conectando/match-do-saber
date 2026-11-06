@@ -172,12 +172,12 @@ describe('v4.0.0: barra de tempo e pulso', () => {
   it('AC-4.7: com 5 s ou menos e cronômetro correndo, o card pulsa e a barra fica em alerta', () => {
     const { container } = render(<TelaCard {...props} restanteMs={5000} />);
     expect(container.querySelector('article')!.className).toMatch(/pulsando/);
-    expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+    expect(screen.getByRole('timer', { name: 'Tempo restante' }).className).toMatch(/barraAlerta/);
   });
   it('AC-4.7: acima de 5 s não pulsa', () => {
     const { container } = render(<TelaCard {...props} restanteMs={5001} />);
     expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
-    expect(screen.getByRole('timer').className).not.toMatch(/barraAlerta/);
+    expect(screen.getByRole('timer', { name: 'Tempo restante' }).className).not.toMatch(/barraAlerta/);
   });
   it('AC-4.7 (v5.0.0): pausado por "Volte para o centro" não pulsa', () => {
     const { container } = render(<TelaCard {...props} ausente restanteMs={3000} />);
@@ -186,11 +186,40 @@ describe('v4.0.0: barra de tempo e pulso', () => {
   it('AC-4.7 (v5.0.0): com o saiba mais aberto o cronômetro corre, então o card pulsa nos últimos 5 s', () => {
     const { container } = render(<TelaCard {...props} saibaMais restanteMs={3000} />);
     expect(container.querySelector('article')!.className).toMatch(/pulsando/);
-    expect(screen.getByRole('timer').className).toMatch(/barraAlerta/);
+    expect(screen.getByRole('timer', { name: 'Tempo restante' }).className).toMatch(/barraAlerta/);
   });
-  it('card saindo não mostra a barra nem pulsa', () => {
+  it('card saindo não mostra a barra da tela nem pulsa; a barra do card sai junto com ele (AC-4.8)', () => {
     const { container } = render(<TelaCard {...props} restanteMs={3000} saida="direita" />);
     expect(container.querySelector('article')!.className).not.toMatch(/pulsando/);
-    expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('timer', { name: 'Tempo restante' })).not.toBeInTheDocument();
+    expect(container.querySelector('article')).toContainElement(screen.getByRole('timer', { name: 'Tempo do card' }));
+  });
+});
+
+describe('v8.2.0: barra de tempo no card (AC-4.8)', () => {
+  const props = { noticia, saibaMais: false, ausente: false, pontos: 0, totalMs: 15000, cardRef: { current: null }, onArrastar: () => {} };
+  it('AC-4.8: barra no card com os mesmos segundos e fração da barra da tela', () => {
+    const { container } = render(<TelaCard {...props} restanteMs={12000} />);
+    const article = container.querySelector('article')!;
+    const barraCard = screen.getByRole('timer', { name: 'Tempo do card' });
+    expect(article).toContainElement(barraCard);
+    expect(barraCard).toHaveTextContent('12 s');
+    expect(barraCard.firstElementChild).toHaveStyle({ width: '80%' });
+    expect(barraCard.className).toMatch(/barraCard/);
+    const barraTela = screen.getByRole('timer', { name: 'Tempo restante' });
+    expect(article).not.toContainElement(barraTela);
+    expect(barraTela).toHaveTextContent('12 s');
+  });
+  it('AC-4.8: com o saiba mais aberto, a barra continua no card e fora do texto expandido', () => {
+    const { container } = render(<TelaCard {...props} saibaMais restanteMs={12000} />);
+    const article = container.querySelector('article')!;
+    const barraCard = screen.getByRole('timer', { name: 'Tempo do card' });
+    expect(article).toContainElement(barraCard);
+    expect(container.querySelector('[class*="saibaMais"]')).not.toContainElement(barraCard);
+  });
+  it('AC-4.7/AC-4.8: nos últimos 5 s as duas barras ficam em alerta', () => {
+    render(<TelaCard {...props} restanteMs={4000} />);
+    expect(screen.getByRole('timer', { name: 'Tempo do card' }).className).toMatch(/barraAlerta/);
+    expect(screen.getByRole('timer', { name: 'Tempo restante' }).className).toMatch(/barraAlerta/);
   });
 });

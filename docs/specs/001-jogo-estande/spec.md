@@ -1,9 +1,9 @@
 # Feature 001: Match do Saber — jogo de estande (MVP)
 
 **Status:** Approved
-**Version:** 8.1.0
+**Version:** 8.2.0
 **Created:** 2026-10-26
-**Last Updated:** 2026-11-03
+**Last Updated:** 2026-11-06
 **Branch:** `001-jogo-estande`
 **Origem:** [prd.md](prd.md) · ADRs: [frontend-stack](../../adr/001-frontend-stack.md), [motion-input](../../adr/001-motion-input.md), [content-pipeline](../../adr/001-content-pipeline.md)
 
@@ -27,6 +27,7 @@
 | 7.1.0 | 2026-11-03 | Adicionado AC-5.7: o resumo mostra, abaixo do "N de M", uma mensagem conforme a proporção de acertos (de "Cuidado!" a "Imune a fake news!"); FR-5 ganha a regra das faixas |
 | 8.0.0 | 2026-11-03 | O resumo deixa de mostrar a lista "Técnicas que você praticou": reescritos AC-5.1, AC-13.2 e FR-13. A técnica de cada notícia continua no feedback de cada card (AC-4.x) |
 | 8.1.0 | 2026-11-03 | Modo Corpo ganha outro jeito de escolher o lado, além de deslocar o tronco: estender um braço para o lado (AC-2.7, AC-2.8). AC-2.4 passa a exigir também os braços de volta perto do corpo entre duas escolhas; AC-2.9 fixa a dica do modo Corpo; FR-2 ganha o gesto. Causa: no teste da responsável, a pessoa escolhia com os braços e o tronco ficava no centro, então nenhum card era escolhido |
+| 8.2.0 | 2026-11-06 | Adicionado AC-4.8: o card ganha uma barra de tempo própria na parte de baixo, com os segundos, além da barra da base da tela (AC-4.6), que continua; FR-4 cita as duas barras |
 
 ---
 
@@ -131,6 +132,7 @@ Estudantes do ensino médio e jovens adultos recebem o tempo todo notícias com 
 - [ ] **AC-4.5** Given um card está na tela (parado ou saindo) When a tela tem 1366×768 ou 1920×1080 Then o card fica centralizado na vertical: o centro do card fica a no máximo 8 px do centro da área de jogo, que é a tela menos a barra de tempo (AC-4.6), sem cortar texto (FR-4) e sem ficar atrás da barra.
 - [ ] **AC-4.6** Given um card está na tela When o tempo passa Then uma barra de tempo grossa, com a largura da tela e colada na base, diminui da direita para a esquerda na proporção do tempo restante e mostra dentro dela os segundos restantes (por exemplo, "12 s"); não há mais número de tempo em cima do card.
 - [ ] **AC-4.7** Given um card está na tela com o cronômetro correndo (inclusive com o "saiba mais" aberto) When faltam 5 s ou menos Then a barra fica vermelha e o card ganha borda e brilho vermelhos que pulsam cerca de 1 vez por segundo, crescendo levemente; com o cronômetro pausado ("Volte para o centro") o card não pulsa.
+- [ ] **AC-4.8** Given um card está na tela (inclusive com o "saiba mais" aberto) When o tempo passa Then, além da barra da base da tela (AC-4.6), o card mostra na parte de baixo, na largura do card, uma barra de tempo que diminui da direita para a esquerda na mesma proporção e mostra os mesmos segundos restantes (por exemplo, "12 s"); nos últimos 5 s ela fica vermelha junto com a barra da tela (AC-4.7). A barra do card não cobre título, descrição, imagem, dica nem o texto do "saiba mais", e o card continua cabendo na área de jogo (AC-4.5).
 
 ### Story 5: Ver o resumo e liberar o estande
 
@@ -322,7 +324,7 @@ Este é o modo padrão (FR-9). Os modos Mão e Cabeça estão em FR-9.
 
 **Must:**
 - Mostrar no card: imagem, título e descrição curta da notícia, e uma indicação de como abrir o "saiba mais".
-- Mostrar o tempo restante numa barra grande na base da tela, com os segundos dentro (AC-4.6), e destacar os últimos 5 s com a barra vermelha e o card pulsando em vermelho (AC-4.7).
+- Mostrar o tempo restante numa barra grande na base da tela, com os segundos dentro (AC-4.6), e também numa barra na parte de baixo do card, com os mesmos segundos (AC-4.8); destacar os últimos 5 s com as duas barras vermelhas e o card pulsando em vermelho (AC-4.7).
 - Mostrar no "saiba mais" o texto expandido da notícia.
 - Mostrar no feedback, para todo resultado: selo ("Acertou!", "Errou", "Tempo esgotado"), veredito, explicação e técnica de checagem.
 - Mostrar todos os textos em português do Brasil.
@@ -558,6 +560,10 @@ Decisões da v8.1.0, confirmadas pela responsável pelo projeto em 2026-11-03:
 - No modo Corpo, estender um braço para o lado também escolhe, além de deslocar o tronco. O limite é 1,2 largura de ombro do punho ao meio do corpo, com ~300 ms de permanência. A liberação entre escolhas pede os dois punhos a menos de 0,9 largura de ombro.
 - Os limites saíram de uma estimativa a olho nos quadros do vídeo de teste da responsável (braços soltos ~0,8; braço estendido de 1,7 a 2,6 larguras de ombro) e podem ser ajustados com a linha "mãos (L)" do diagnóstico (FR-12).
 - O deslocamento do tronco, o "saiba mais", os modos Mão e Cabeça, o cronômetro e a pausa por ausência não mudam.
+
+Decisões da v8.2.0, confirmadas pela responsável pelo projeto em 2026-11-06:
+- O card ganha uma barra de tempo na parte de baixo, com os segundos, para o tempo ficar perto de onde o jogador olha. A barra grande da base da tela continua.
+- As duas barras mostram o mesmo cronômetro: mesma proporção, mesmos segundos, vermelhas juntas nos últimos 5 s e paradas juntas em "Volte para o centro".
 
 ## Out of Scope (Future Considerations)
 
