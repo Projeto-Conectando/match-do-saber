@@ -1,6 +1,6 @@
 ---
 name: mvp-status-fase7
-description: MVP 001-jogo-estande (spec v8.0.0, resumo sem lista de técnicas e com mensagem por faixa, foto polaroid no resumo, gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
+description: MVP 001-jogo-estande (spec v8.1.0, braço para o lado no modo Corpo, resumo sem lista de técnicas e com mensagem por faixa, foto polaroid no resumo, gestos novos do modo Mão e modo de diagnóstico, modos, Configurações no canto superior direito, Iniciar/Sair, sons, início só manual, card parado, barra de tempo, tempo corre no saiba mais) está na main; verificação manual das Fases 7, 9, 11, 13, 15 e 17 e setup do GitHub/Google pendentes; prazo 2026-11-09
 metadata:
   type: project
 ---
@@ -24,9 +24,10 @@ Pendente (Fase 7, manual — ver `docs/specs/001-jogo-estande/plan.md`):
 - (v7.0.0, mergeado em 2026-11-03) Resumo mostra polaroid com quadro da câmera do card do meio (⌈M/2⌉), só em memória (apagado ao fechar o resumo); item "Foto no resumo" no menu (ligado por padrão). A exceção à regra "não guardar imagem da câmera" foi decidida sem emendar o Princípio 3 porque nada é salvo/enviado; baixar/QR ficou fora (exigiria emenda). Fase 25 pendente: enquadramento no recorte quadrado, legibilidade na TV, sem travada no instante da foto.
 - (v7.1.0, mergeado em 2026-11-03) Resumo mostra mensagem por proporção de acertos (AC-5.7). Conferir legibilidade na TV (Fase 27).
 - (v8.0.0, mergeado em 2026-11-03) Resumo não mostra mais "Técnicas que você praticou"; a técnica segue no feedback de cada card (Princípio 2).
-- (2026-11-03, ABERTO) Usuária relatou a barra de tempo parada no modo Mão: print com barra inteira vermelha em "5 s" e sem prévia da câmera. Não reproduzido (sem câmera e com câmera simulada a barra desce). Suspeita não confirmada: carga do modelo de pose travando a página. Pedido print com `?diagnostico` no momento do travamento.
+- (2026-11-03, ABERTO, sem novidade) Barra de tempo parada no modo Mão, print sem prévia da câmera; não reproduzido. Achado (2026-11-05): no servidor de dev com câmera falsa, a 1ª detecção de pose trava a página ~8 s (compilação na GPU), o que explicaria uma barra parada no início; não confirmado no notebook dela.
+- (v8.1.0, mergeado em 2026-11-06) "Não lê nenhum movimento" no modo Corpo NÃO era defeito de câmera: vídeo da usuária mostrou câmera ativa e esqueleto ok, mas ela escolhia estendendo os braços e o tronco ficava no centro (a regra só aceitava deslocar o tronco). Agora um braço estendido para o lado (punho > 1,2 L do meio do corpo, ~300 ms) também escolhe; liberação exige punhos < 0,9 L. Fase 30 pendente: no notebook, com `?diagnostico`, conferir "mãos (L)" < 0,9 com braços soltos e ajustar `bracoLadoL`/`retornoBracoL`.
 - Planilha: aba `noticias` criada pela `configurarPlanilha` (2026-10-29); faltam a conta de serviço Google (Parte 2) e o GitHub/secrets/token (Parte 3) do guia.
-- O repositório não tem remoto: criar repo no GitHub, conta de serviço Google, secrets/variables e token do Apps Script conforme `docs/operacao.md`.
+- (2026-11-05) Repositório público criado: https://github.com/Projeto-Conectando/match-do-saber (conta Projeto-Conectando, escolha da usuária; `origin`). Faltam conta de serviço Google, secret `GOOGLE_SERVICE_ACCOUNT_JSON`, variable `SHEET_ID`, Pages = GitHub Actions e token do Apps Script (`docs/operacao.md`); até lá o workflow `publicar.yml` falha. Push só quando a usuária pedir.
 
-**Why:** o código só foi verificado sem câmera e sem contas reais; nada foi publicado.
+**Why:** o código só foi verificado sem câmera e sem contas reais; o jogo ainda não está no ar (repo publicado, Pages não configurado).
 **How to apply:** em sessões futuras, não tratar o MVP como entregue até esses itens serem confirmados; começar por eles antes de novas features.
