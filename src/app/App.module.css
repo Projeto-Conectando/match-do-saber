@@ -65,7 +65,10 @@
 .barraTempo { position: absolute; left: 0; right: 0; bottom: 0; height: 4rem; background: #2a1850; overflow: hidden; }
 .barraPreenchida { position: absolute; top: 0; bottom: 0; left: 0; background: #7cff6b; transition: width 0.1s linear; }
 .barraAlerta .barraPreenchida { background: #ff3b3b; }
+/* Barra no card (AC-4.8): margens negativas = padding do card, colada embaixo e na largura do card. */
+.barraCard { position: relative; flex: none; height: 2.5rem; margin: auto -1.25rem -1.25rem; border-radius: 0 0 1.5rem 1.5rem; background: #2a1850; overflow: hidden; }
 .barraSegundos { position: relative; display: grid; place-items: center; height: 100%; font-size: 2rem; font-weight: 800; color: #fff; text-shadow: 0 1px 4px rgb(0 0 0 / 0.8); }
+.barraCard .barraSegundos { font-size: 1.25rem; }
 .pulsando { border: 4px solid #ff3b3b; animation: pulsar 1s ease-in-out infinite; }
 @keyframes pulsar {
   0%, 100% { box-shadow: 0 0 0 0 rgb(255 59 59 / 0.6); transform: scale(1); }

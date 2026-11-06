@@ -112,11 +112,12 @@ export function BotaoSair({ onSair }: { onSair: () => void }) {
   );
 }
 
-/** Tempo restante do card (AC-4.6); vermelha nos últimos 5 s (AC-4.7). */
-export function BarraTempo({ restanteMs, totalMs, alerta }: { restanteMs: number; totalMs: number; alerta: boolean }) {
+/** Tempo restante do card (AC-4.6); vermelha nos últimos 5 s (AC-4.7). `noCard`: a barra dentro do card (AC-4.8). */
+export function BarraTempo({ restanteMs, totalMs, alerta, noCard }: { restanteMs: number; totalMs: number; alerta: boolean; noCard?: boolean }) {
   const fracao = Math.max(0, Math.min(1, restanteMs / totalMs));
+  const base = noCard ? s.barraCard : s.barraTempo;
   return (
-    <div className={alerta ? `${s.barraTempo} ${s.barraAlerta}` : s.barraTempo} role="timer" aria-label="Tempo restante">
+    <div className={alerta ? `${base} ${s.barraAlerta}` : base} role="timer" aria-label={noCard ? 'Tempo do card' : 'Tempo restante'}>
       <div className={s.barraPreenchida} style={{ width: `${fracao * 100}%` }} />
       <span className={s.barraSegundos}>{`${Math.ceil(restanteMs / 1000)} s`}</span>
     </div>
@@ -169,6 +170,8 @@ export function TelaCard({ noticia, restanteMs, saibaMais, ausente, saida, ponto
             <p className={s.dica}>{DICA_SAIBA_MAIS[modo]}</p>
           </>
         )}
+        {/* Fora do saiba mais, que rola sozinho; sai junto com o card (AC-4.8). */}
+        <BarraTempo noCard restanteMs={restanteMs} totalMs={totalMs} alerta={alerta} />
       </article>
       <div className={s.lado}>Verdade ✓</div>
       {/* Fora do card, para não tirar espaço do texto da notícia (FR-4). */}
