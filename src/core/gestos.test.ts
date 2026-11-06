@@ -10,8 +10,8 @@ function pose(cxJogador: number, opts: { largura?: number; maosAcima?: boolean }
   p[11] = { x: cx + largura / 2, y: 0.45, visibility: 1 };
   p[12] = { x: cx - largura / 2, y: 0.45, visibility: 1 };
   const yMao = opts.maosAcima ? 0.15 : 0.7;
-  p[15] = { x: cx + largura, y: yMao, visibility: 1 };
-  p[16] = { x: cx - largura, y: yMao, visibility: 1 };
+  p[15] = { x: cx + 0.6 * largura, y: yMao, visibility: 1 };
+  p[16] = { x: cx - 0.6 * largura, y: yMao, visibility: 1 };
   return p;
 }
 
