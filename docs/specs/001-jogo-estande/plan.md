@@ -5304,6 +5304,48 @@ Decisões técnicas (inline):
 
 ---
 
+## Phase 31 (added v8.2.0): Barra de tempo no card
+
+**Implements:** FR-4 (barra no card) | **Satisfies:** AC-4.8, AC-4.5 (com o card mais alto), AC-4.7 (as duas barras vermelhas)
+**Files:** `src/app/Telas.tsx`, `src/app/Telas.test.tsx`, `src/app/App.module.css`, `tests/e2e/barra-tempo.spec.ts`
+**Interfaces:** Consumes: `BarraTempo`, `TelaCard` (`src/app/Telas.tsx`, Fases 14 e 16). Produces: `BarraTempo` ganha a prop opcional `noCard?: boolean`; com ela, a barra usa o estilo `.barraCard` e o nome acessível "Tempo do card". Sem ela, nada muda.
+
+Decisões técnicas (inline):
+- **Mesmo componente, outro estilo:** a barra do card é `<BarraTempo noCard … />`, último filho do `<article>`, com os mesmos `restanteMs`, `totalMs` e `alerta` da barra da tela. A conta da fração e dos segundos fica num lugar só.
+- **Nome acessível distinto:** a barra do card usa `role="timer"` e `aria-label="Tempo do card"`. Os testes atuais procuram `getByRole('timer', { name: 'Tempo restante' })`, que casa por trecho do nome; "Tempo do card" não contém "Tempo restante", então eles continuam achando só a barra da tela.
+- **Na largura do card, colada embaixo:** `.barraCard` com `position: relative`, `flex: none`, altura ~2.5rem, margens negativas iguais ao padding do card (`margin: auto -1.25rem -1.25rem`, o `auto` em cima empurra a barra para o fim) e cantos de baixo arredondados como o card (`border-radius: 0 0 1.5rem 1.5rem`; o `overflow: hidden` da barra corta o preenchimento). Os segundos em ~1.25rem, com as mesmas cores da barra da tela (`.barraPreenchida`, `.barraAlerta`).
+- **No "saiba mais":** a barra fica fora do `div.saibaMais`, que continua rolando sozinho; o texto não passa por baixo da barra.
+- **Saindo:** a barra do card continua visível durante a animação de saída (faz parte do card); a barra da tela continua sumindo como hoje.
+
+### 31.1 Barra no card
+
+- [ ] Em `src/app/Telas.test.tsx`, acrescentar testes de `TelaCard` (AC-4.8):
+  - com `restanteMs={12000}` e `totalMs={15000}`, `getByRole('timer', { name: 'Tempo do card' })` está dentro do `article`, mostra "12 s" e o preenchimento tem `width: 80%`; a barra da tela (`name: 'Tempo restante'`) continua fora do `article` com "12 s";
+  - com `saibaMais` ligado, a barra do card continua no `article` e fora do `.saibaMais`;
+  - com `restanteMs={4000}`, as duas barras têm a classe de alerta.
+- [ ] Rodar `npx vitest run src/app/Telas.test.tsx`. Esperado: FAIL (não existe barra no card).
+- [ ] Implementar em `src/app/Telas.tsx` (`BarraTempo` com `noCard`; `<BarraTempo noCard … />` no fim do `article`) e em `src/app/App.module.css` (`.barraCard` e o tamanho dos segundos dentro dela).
+- [ ] Rodar `npx vitest run src/app/Telas.test.tsx`. Esperado: PASS.
+- [ ] Em `tests/e2e/barra-tempo.spec.ts`, acrescentar um teste (AC-4.8, AC-4.5), em 1366×768 e 1920×1080 (`page.setViewportSize`):
+  - a barra do card está dentro da caixa do `article`, encostada embaixo (fundo da barra a ≤ 2 px do fundo do card) e com a largura do card (± 2 px);
+  - a caixa da barra não se sobrepõe às caixas de `img`, `h2` e dos `p` do card;
+  - o texto da barra do card é igual ao da barra da tela, e a largura do preenchimento diminui depois de 2 s;
+  - o centro do card continua a ≤ 8 px do centro da área de jogo (tela menos a barra da base), como no teste atual de AC-4.5 (`tests/e2e/partida-v2.spec.ts`, que também precisa continuar passando);
+  - com ↑ ("saiba mais"), a barra do card continua visível e não se sobrepõe ao `.saibaMais`.
+- [ ] Rodar `npx vitest run`, `npx tsc --noEmit` e `npm run e2e`. Esperado: tudo PASS. Se o card passar da área de jogo em 1366×768, reduzir a altura da barra do card (mínimo 2rem) antes de mexer na imagem.
+- [ ] Commit: `feat(card): time bar at the bottom of the card (Phase 31.1: Barra no card)`
+
+---
+
+## Phase 32 (added v8.2.0): Verificação da barra do card no hardware
+
+**Implements:** FR-4 | **Satisfies:** AC-4.8 (hardware)
+
+- [ ] Na TV do estande, a ~2 m: conferir que os segundos da barra do card são legíveis e que as duas barras ficam vermelhas juntas nos últimos 5 s.
+- [ ] Com uma notícia de título e descrição longos, conferir que nada do texto fica atrás da barra do card e que o card não é cortado.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5326,7 +5368,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR-1 | 3, 5, 12 (reescrito v3.0.0), 13 |
   | FR-2 | 4, 5, 29 (v8.1.0), 30 |
   | FR-3 | 5 |
-  | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15, 16 |
+  | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15, 16, 31 (v8.2.0), 32 |
   | FR-5 | 3, 26 (v7.1.0) |
   | FR-6 | 0, 1, 6 |
   | FR-7 | 0, 1, 2, 6 |
@@ -5375,3 +5417,5 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 8.1.0 | 4 | Parcialmente estendida: o modo Corpo aceita também o braço para o lado; o retorno ao centro inclui os punhos (Fase 29) |
 | 8.1.0 | 29 | Adicionada: braço para o lado no modo Corpo e dica nova |
 | 8.1.0 | 30 | Adicionada: verificação no hardware |
+| 8.2.0 | 31 | Adicionada: barra de tempo no card |
+| 8.2.0 | 32 | Adicionada: verificação no hardware |
