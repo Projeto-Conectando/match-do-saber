@@ -23,6 +23,9 @@ export const CONFIG_GESTOS = {
   centroArrasteL: 0.5,
   arrasteMinL: 1,
   arrasteMaxMs: 800,
+  /** v8.1.0, modo Corpo: braço para o lado, em L a partir do meio do corpo (AC-2.7, AC-2.4). */
+  bracoLadoL: 1.2,
+  retornoBracoL: 0.9,
 };
 export type ConfigGestos = typeof CONFIG_GESTOS;
 type Config = ConfigGestos;
@@ -82,27 +85,38 @@ export function escolherJogador(poses: Pose[]): Pose | null {
   return melhor;
 }
 
-/** Detecta um deslocamento lateral mantido por `permanenciaLadoMs`, com retorno obrigatório ao centro. */
-function criarLado(limiar: number, retorno: number, cfg: Config) {
-  let lado: { gesto: 'direita' | 'esquerda'; desde: number } | null = null;
+type Lado = 'direita' | 'esquerda';
+
+/** Escolha de um lado: a mesma postura mantida por `permanenciaLadoMs` dispara uma vez; depois trava até `livre`. */
+function criarEscolha(cfg: Config) {
+  let lado: { gesto: Lado; desde: number } | null = null;
   let travado = false;
   return {
     zerar() { lado = null; },
-    ler(d: number, tMs: number): Gesto | null {
+    ler(postura: Lado | null, livre: boolean, tMs: number): Gesto | null {
       if (travado) {
-        if (Math.abs(d) < retorno) travado = false;
+        if (livre) travado = false;
         return null;
       }
-      const dir = d > limiar ? 'direita' : d < -limiar ? 'esquerda' : null;
-      if (!dir) lado = null;
-      else if (lado?.gesto !== dir) lado = { gesto: dir, desde: tMs };
+      if (!postura) lado = null;
+      else if (lado?.gesto !== postura) lado = { gesto: postura, desde: tMs };
       else if (tMs - lado.desde >= cfg.permanenciaLadoMs) {
         travado = true;
         lado = null;
-        return dir;
+        return postura;
       }
       return null;
     },
+  };
+}
+
+/** Detecta um deslocamento lateral mantido por `permanenciaLadoMs`, com retorno obrigatório ao centro. */
+function criarLado(limiar: number, retorno: number, cfg: Config) {
+  const escolha = criarEscolha(cfg);
+  return {
+    zerar: escolha.zerar,
+    ler: (d: number, tMs: number): Gesto | null =>
+      escolha.ler(d > limiar ? 'direita' : d < -limiar ? 'esquerda' : null, Math.abs(d) < retorno, tMs),
   };
 }
 
@@ -124,26 +138,39 @@ function criarGatilho(ms: number) {
 function interpretadorCorpo(cfg: Config): Interpretador {
   let centro: number | null = null;
   let ultimoCx = 0.5;
-  const lado = criarLado(cfg.limiar, cfg.zonaRetorno, cfg);
+  const escolha = criarEscolha(cfg);
   const maos = criarGatilho(cfg.permanenciaMaosMs);
   return {
     calibrar() { centro = ultimoCx; },
     ler(pose, tMs) {
-      if (!pose) { lado.zerar(); maos.zerar(); return AUSENTE; }
+      if (!pose) { escolha.zerar(); maos.zerar(); return AUSENTE; }
       const gestos: Gesto[] = [];
       const { cx } = medir(pose);
       ultimoCx = cx;
       const d = cx - (centro ?? 0.5);
-      const g = lado.ler(d, tMs);
-      if (g) gestos.push(g);
+      const m = medirMaos(pose, cfg);
       const nariz = pose[NARIZ]!.y;
-      if (maos.ler(pose[PUNHO_E]!.y < nariz && pose[PUNHO_D]!.y < nariz, tMs)) gestos.push('maosParaCima');
+      const maosAcima = pose[PUNHO_E]!.y < nariz && pose[PUNHO_D]!.y < nariz;
+
+      const tronco: Lado | null = d > cfg.limiar ? 'direita' : d < -cfg.limiar ? 'esquerda' : null;
+      // AC-2.7: um punho além de `bracoLadoL`, sem depender da calibração. AC-2.8: um para cada lado
+      // não escolhe; as duas mãos acima do nariz são o "saiba mais".
+      const ladoPunho = (desloc: number): Lado | null =>
+        desloc > cfg.bracoLadoL ? 'direita' : desloc < -cfg.bracoLadoL ? 'esquerda' : null;
+      const pd = ladoPunho(m.deslocD), pe = ladoPunho(m.deslocE);
+      const braco = maosAcima || (pd && pe && pd !== pe) ? null : pd ?? pe;
+      // AC-2.8: tronco e braço para lados diferentes não escolhem.
+      const postura = tronco && braco && tronco !== braco ? null : tronco ?? braco;
+      // AC-2.4: libera com o tronco no centro e os dois punhos perto do corpo.
+      const livre = Math.abs(d) < cfg.zonaRetorno
+        && Math.abs(m.deslocD) < cfg.retornoBracoL && Math.abs(m.deslocE) < cfg.retornoBracoL;
+      const g = escolha.ler(postura, livre, tMs);
+      if (g) gestos.push(g);
+      if (maos.ler(maosAcima, tMs)) gestos.push('maosParaCima');
       return { presenca: presenca(cx, cfg), inclinacao: limitar(d / cfg.limiar), gestos };
     },
   };
 }
-
-type Lado = 'direita' | 'esquerda';
 
 /** Postura que escolhe um lado: uma mão levantada (AC-9.7) ou as duas mãos baixas além da linha de um ombro (AC-9.19). */
 function posturaLado(m: MedidaMaos, cfg: Config): Lado | null {

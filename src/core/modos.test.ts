@@ -69,4 +69,7 @@ describe('configurações do estande', () => {
     expect(DICA_GESTOS.mao).toBe('É verdade: mão direita para cima, as duas mãos para a direita ou arraste para a direita · É falsa: o mesmo para a esquerda · Duas mãos para cima: saiba mais');
     expect(DICA_GESTOS.cabeca).toBe('Cabeça para a direita: é verdade · Cabeça para a esquerda: é falsa · Queixo para cima: saiba mais');
   });
+  it('AC-2.9: dica do modo Corpo cita o corpo e o braço', () => {
+    expect(DICA_GESTOS.corpo).toBe('Corpo ou braço para a direita: é verdade · Para a esquerda: é falsa · Duas mãos para cima: saiba mais');
+  });
 });

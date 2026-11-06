@@ -5248,6 +5248,62 @@ Tira do resumo o título "Técnicas que você praticou" e a lista. A técnica co
 
 ---
 
+## Phase 29 (added v8.1.0): Braço para o lado no modo Corpo
+
+**Implements:** FR-2 (gesto do braço, retorno ao centro) | **Satisfies:** AC-2.4 (ampliado v8.1.0), AC-2.7, AC-2.8, AC-2.9
+**Files:** `src/core/gestos.ts`, `src/core/gestos-corpo-braco.test.ts` (novo), `src/core/gestos.test.ts`, `src/core/modos.ts`, `src/core/modos.test.ts`
+**Interfaces:** Consumes: `medirMaos`, `MedidaMaos`, `CONFIG_GESTOS`, `criarInterpretador('corpo')` (`src/core/gestos.ts`, Fases 4 e 20); `DICA_GESTOS` (`src/core/modos.ts`, Fase 8). Produces:
+- `CONFIG_GESTOS` ganha `bracoLadoL: 1.2` e `retornoBracoL: 0.9` (larguras de ombro, as mesmas unidades de `medirMaos`).
+- `DICA_GESTOS.corpo` passa a ser `'Corpo ou braço para a direita: é verdade · Para a esquerda: é falsa · Duas mãos para cima: saiba mais'`.
+- O interpretador do modo Corpo continua com a mesma interface (`Interpretador`); só o que ele aceita como escolha muda.
+
+Causa (investigação do bug "não está lendo nenhum movimento", vídeo da responsável de 2026-11-03):
+- A câmera estava ativa e o esqueleto acompanhava a pessoa; a barra de tempo descia normalmente.
+- No modo Corpo, a pessoa escolhia estendendo os braços para os lados, e o centro dos ombros ficava parado em ~51% da imagem. A regra exige o tronco a mais de 0,12 da largura da imagem da calibração (`limiar`), então nenhum card era escolhido e todos terminavam em "Tempo esgotado".
+- Medidas a olho nos quadros: braços soltos ~0,8 L; braço estendido de 1,7 a 2,6 L.
+
+Decisões técnicas (inline):
+- **Postura de lado do modo Corpo:** `tronco` = lado de `d = cx − centro` além de `limiar` (como hoje); `braco` = lado de um punho além de `bracoLadoL` (`medirMaos(...).deslocD/deslocE`), ou `null` se um punho passa para cada lado (AC-2.8). Com os dois punhos acima do nariz, `braco = null` (é "saiba mais"). A postura é `tronco ?? braco`, e `null` quando os dois existem e apontam para lados diferentes (AC-2.8).
+- **Uma só permanência e uma só trava:** a postura precisa ficar igual por `permanenciaLadoMs` (~300 ms) e então dispara. Depois de disparar, trava até `|d| < zonaRetorno` **e** `|deslocD| < retornoBracoL` **e** `|deslocE| < retornoBracoL` (AC-2.4). Trocar de tronco para braço no mesmo lado não reinicia a contagem.
+- **Generalizar `criarLado`:** separar "qual lado" de "está livre". Por exemplo, `criarEscolha(cfg)` com `ler(postura: Lado | null, livre: boolean, tMs)`, e `criarLado(limiar, retorno, cfg)` passa a ser um invólucro dela, para o modo Cabeça não mudar. Sem pose, `zerar()` como hoje (a trava continua, como hoje).
+- **A calibração não afeta o braço:** o braço é medido a partir do meio do corpo em L, então funciona perto ou longe da câmera e sem calibração (partida pelo Enter).
+- **Fixture dos testes antigos:** o `pose()` de `src/core/gestos.test.ts` põe os punhos a 1,0 L, o que agora fica entre o retorno (0,9) e o limite (1,2) e nunca libera a trava. Mudar o padrão para 0,6 L (braços soltos, como no vídeo) sem mudar o que cada teste confere.
+
+### 29.1 Gesto do braço e dica
+
+- [ ] Em `src/core/gestos.test.ts`, mudar o `pose()` para os punhos ficarem a `0.6 * largura` do centro (`p[15].x = cx + 0.6 * largura`, `p[16].x = cx - 0.6 * largura`). Rodar `npx vitest run src/core/gestos.test.ts`. Esperado: PASS (só a fixture mudou).
+- [ ] Criar `src/core/gestos-corpo-braco.test.ts` com uma pose sintética como a do `gestos-mao-v6.test.ts` (L = 0,2; `cxJ` = centro do tronco do jogador, padrão 0,5; `d`/`e` = deslocamento de cada punho em L, padrão +0,6/−0,6; `maosAcima` põe os dois punhos acima do nariz). Casos, todos com `criarInterpretador('corpo')`, `ler(pose(), 0)` e `calibrar()` antes:
+  - AC-2.7: `d: 1.5` por 0 → 200 ms dá `[]`; em 300 ms dá `['direita']`. `e: -1.5` dá `['esquerda']`. O tronco fica em 0,5 o tempo todo.
+  - AC-2.7: `d: 1.1` por 1000 ms dá `[]` (abaixo do limite).
+  - AC-2.7 sem calibração: `criarInterpretador('corpo')` sem `calibrar()`, `d: 1.5` por 300 ms dá `['direita']`.
+  - AC-2.8: `d: 1.5, e: -1.5` por 1000 ms dá `[]`; tronco em 0,7 (direita) com `e: -1.5` por 1000 ms dá `[]`; `maosAcima` com `d: 1.5` por 600 ms dá só `['maosParaCima']`.
+  - AC-2.4: depois de uma escolha com `d: 1.5`, manter `d: 1.5` por mais 1000 ms dá `[]`; baixar para `d: 1.0` (entre 0,9 e 1,2) e estender de novo dá `[]`; baixar para `d: 0.6` e estender de novo por 300 ms dá `['direita']`.
+  - AC-2.4 com tronco: escolha pelo tronco (`cxJ: 0.7`), voltar o tronco ao centro mas com `d: 1.5` não libera; só libera com o tronco no centro e os punhos a menos de 0,9 L.
+  - Mistura no mesmo lado: tronco em 0,7 por 150 ms e depois tronco em 0,5 com `d: 1.5` por mais 150 ms dá `['direita']` aos 300 ms.
+- [ ] Em `src/core/modos.test.ts`, conferir o texto exato de `DICA_GESTOS.corpo` (AC-2.9).
+- [ ] Rodar `npx vitest run src/core/gestos-corpo-braco.test.ts src/core/modos.test.ts`. Esperado: FAIL (o braço não escolhe e a dica é a antiga).
+- [ ] Em `src/core/gestos.ts`: acrescentar `bracoLadoL` e `retornoBracoL` a `CONFIG_GESTOS`; generalizar `criarLado` como nas decisões técnicas; em `interpretadorCorpo`, calcular `tronco`, `braco` e a postura, e liberar a trava só com tronco e punhos de volta. Comentar as regras com as referências AC-2.7, AC-2.8 e AC-2.4.
+- [ ] Em `src/core/modos.ts`, trocar `DICA_GESTOS.corpo` pelo texto novo.
+- [ ] Rodar `npx vitest run` e `npx tsc --noEmit`. Esperado: tudo PASS, inclusive os testes antigos do tronco, do modo Cabeça (`criarLado`) e do modo Mão.
+- [ ] Rodar `npm run e2e`. Esperado: PASS (a dica nova aparece só na calibração do modo Corpo; se algum teste E2E conferir o texto antigo, trocar pelo novo).
+- [ ] Commit: `feat(gestos): an arm stretched to the side also chooses in Corpo mode (Phase 29.1: Braço para o lado)`
+
+---
+
+## Phase 30 (added v8.1.0): Verificação do braço para o lado no hardware
+
+**Implements:** FR-2 | **Satisfies:** AC-2.4, AC-2.7, AC-2.8 (hardware)
+
+- [ ] Com `?diagnostico`, no modo Corpo, em pé na distância do estande:
+  - estender o braço direito para a direita 5 vezes e o esquerdo para a esquerda 5 vezes, em alturas diferentes; anotar escolhas certas, falsas e não registradas;
+  - deslocar o tronco para cada lado 5 vezes (o gesto antigo continua valendo);
+  - abrir os dois braços ao mesmo tempo: não deve escolher (AC-2.8);
+  - levantar as duas mãos: deve abrir só o "saiba mais".
+- [ ] Ficar parado com os braços soltos e conferir na linha "mãos (L)" que os dois valores ficam abaixo de 0,9; se não ficarem, a trava não libera e é preciso ajustar `retornoBracoL`.
+- [ ] Se houver escolhas por engano ou não registradas, ajustar `bracoLadoL` e `retornoBracoL` com os valores "mãos (L)" do registro baixado.
+
+---
+
 ## Quickstart Validation
 
 ```bash
@@ -5268,7 +5324,7 @@ npm run dev              # abre http://localhost:5173, permitir câmera
   | FR | Fases |
   |---|---|
   | FR-1 | 3, 5, 12 (reescrito v3.0.0), 13 |
-  | FR-2 | 4, 5 |
+  | FR-2 | 4, 5, 29 (v8.1.0), 30 |
   | FR-3 | 5 |
   | FR-4 | 1 (limites), 5, 10, 14 (reescrito v4.0.0), 15, 16 |
   | FR-5 | 3, 26 (v7.1.0) |
@@ -5316,3 +5372,6 @@ npm run dev              # abre http://localhost:5173, permitir câmera
 | 7.1.0 | 27 | Adicionada: verificação no hardware |
 | 8.0.0 | 5, 24, 26 | Parcialmente invalidadas: a lista de técnicas do resumo sai; reescritas na Fase 28 |
 | 8.0.0 | 28 | Adicionada: resumo sem a lista de técnicas |
+| 8.1.0 | 4 | Parcialmente estendida: o modo Corpo aceita também o braço para o lado; o retorno ao centro inclui os punhos (Fase 29) |
+| 8.1.0 | 29 | Adicionada: braço para o lado no modo Corpo e dica nova |
+| 8.1.0 | 30 | Adicionada: verificação no hardware |
